@@ -52,6 +52,11 @@ Después, cada uno abre el link `https://TU-USUARIO.github.io/zona-1v1/` y usa *
 - **Mapas:** Bodega, Pueblo (casas con puertas), Isla (un río que te frena y un puente) y Mercado (puestos y pasillos).
 - **Armas:** pistola, subfusil, escopeta, rifle, francotirador (con láser de aviso), lanzacohetes (el cohete es lento
   y explota en un área) y rifle dorado (solo en el airdrop).
+- **Tu cara en el muñeco:** en la preparación (o en la sala en línea) toca **📷 Tu cara**, toma o elige una foto,
+  acomódala en el círculo y se convierte en caricatura. En el juego tu muñeco tiene cabeza grande con tu cara.
+- **En el celular** la cámara sigue a tu jugador con zoom, y unas flechas en el borde señalan al rival, al airdrop y a la zona.
+- **Actualizaciones:** cuando se publica una versión nueva, el menú muestra "¡Hay una versión nueva!" para actualizar con un toque.
+  La versión está abajo a la derecha del menú.
 - **Música** que se acelera cuando la zona se cierra del todo. Se apaga en Ajustes.
 - **Cambiar teclas:** Ajustes → Cambiar teclas. Si eliges una tecla que ya usaba otra acción, se intercambian.
 - **Objetos:** botiquín (2 s quieto), chaleco, granada y pared de gel.

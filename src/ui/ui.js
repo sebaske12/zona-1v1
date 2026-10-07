@@ -1,9 +1,14 @@
 // Piezas de interfaz que se repiten en los menús.
 import { ANCHO, ALTO, FUENTE, UI } from '../config.js';
 import { Sonido } from '../sistemas/Sonido.js';
+import { conCara } from '../sistemas/Caras.js';
 
+// En el celular la pantalla es chica: los textos pequeños se agrandan un poco para que se lean
 export function texto(escena, x, y, contenido, tam = 20, color = UI.texto, extra = {}) {
-  return escena.add.text(x, y, contenido, { fontFamily: FUENTE, fontSize: `${tam}px`, color, ...extra });
+  const d = escena.sys.game.device;
+  const celular = d.input.touch && !d.os.desktop;
+  const tamFinal = celular && tam < 20 ? Math.round(tam * 1.25) : tam;
+  return escena.add.text(x, y, contenido, { fontFamily: FUENTE, fontSize: `${tamFinal}px`, color, ...extra });
 }
 
 export function boton(escena, x, y, contenido, alPulsar, { ancho = 280, alto = 56, color = UI.azul, tam = 22 } = {}) {
@@ -17,6 +22,19 @@ export function boton(escena, x, y, contenido, alPulsar, { ancho = 280, alto = 5
   c.fondo = fondo;
   c.etiqueta = etiqueta;
   return c;
+}
+
+// Muestra la cara de caricatura (o la esconde si no hay foto) con un anillo del color del jugador
+export function mostrarCara(escena, imagen, anillo, cara, color, tam) {
+  if (!cara) {
+    imagen.setVisible(false);
+    anillo.setVisible(false);
+    return;
+  }
+  anillo.setFillStyle(color).setRadius(tam / 2 + 6).setVisible(true);
+  conCara(escena, cara, (clave) => {
+    if (imagen.active) imagen.setTexture(clave).setDisplaySize(tam, tam).setVisible(true);
+  });
 }
 
 export function fondoMenu(escena) {

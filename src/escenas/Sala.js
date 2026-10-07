@@ -6,6 +6,9 @@ import { MODOS, ORDEN_MODOS } from '../datos/modos.js';
 import { Guardado } from '../sistemas/Guardado.js';
 import { nuevaPartida } from '../sistemas/Partida.js';
 import { Red } from '../red/Red.js';
+import { caraValida, sinCaras } from '../sistemas/Caras.js';
+import { elegirFoto } from '../ui/Foto.js';
+import { mostrarCara } from '../ui/ui.js';
 import { boton, texto, fondoMenu } from '../ui/ui.js';
 import { Musica } from '../sistemas/Musica.js';
 import { ESTILO_INPUT } from './Preparacion.js';
@@ -44,6 +47,10 @@ export class Sala extends Phaser.Scene {
       return s;
     });
     this.prevCuerpo = this.add.image(px, 300, 'cuerpo').setScale(2.2);
+    this.prevAnillo = this.add.circle(px, 296, 46, 0xffffff).setVisible(false);
+    this.prevCara = this.add.image(px, 296, 'cuerpo').setVisible(false);
+    boton(this, px + 150, 284, '📷 Tu cara', () => this.foto(), { ancho: 124, alto: 38, tam: 16, color: UI.azul });
+    this.btnQuitar = boton(this, px + 150, 326, 'Quitar foto', () => { this.perfil.cara = null; this.refrescar(); }, { ancho: 124, alto: 32, tam: 14, color: UI.gris });
     texto(this, px, 362, 'Si ganas, tu pareja paga:', 15, UI.suave).setOrigin(0.5);
     this.inApuesta = this.add.dom(px, 400, 'input', ESTILO_INPUT);
     this.inApuesta.node.value = this.prep.apuestas?.[0] || '';
@@ -77,9 +84,20 @@ export class Sala extends Phaser.Scene {
     this.refrescar();
   }
 
+  foto() {
+    if (this.estado !== 'inicio') return;
+    elegirFoto((datos) => {
+      if (!datos || !this.scene.isActive()) return;
+      this.perfil.cara = datos;
+      this.refrescar();
+    });
+  }
+
   refrescar() {
     this.colores.forEach((s, k) => s.setStrokeStyle(k === this.perfil.color ? 4 : 0, 0xffffff));
     this.prevCuerpo.setTint(COLORES_JUGADOR[this.perfil.color].valor);
+    mostrarCara(this, this.prevCara, this.prevAnillo, this.perfil.cara, COLORES_JUGADOR[this.perfil.color].valor, 82);
+    this.btnQuitar.setVisible(!!this.perfil.cara);
     this.mapaNombre.setText(MAPAS[this.prep.mapa].nombre);
     this.modoNombre.setText(MODOS[this.prep.modo].nombre);
   }
@@ -140,6 +158,7 @@ export class Sala extends Phaser.Scene {
       nombre: String(d?.perfil?.nombre || 'Pareja').slice(0, 14),
       color: Number.isInteger(d?.perfil?.color) ? d.perfil.color : 1,
       accesorio: d?.perfil?.accesorio || 'ninguno',
+      cara: caraValida(d?.perfil?.cara),
     };
     if (otro.color === yo.color) otro.color = (yo.color + 1) % COLORES_JUGADOR.length;
     if (otro.nombre.toLowerCase() === yo.nombre.toLowerCase()) otro.nombre += ' 2';
@@ -150,7 +169,7 @@ export class Sala extends Phaser.Scene {
       vida: [100, 100],
       apuestas: [this.miSaludo().apuesta, String(d?.apuesta || '').slice(0, 60)],
     };
-    this.red.enviar('inicio', config);
+    this.red.enviar('inicio', sinCaras(config)); // las caras ya viajaron en el saludo
     this.lanzar(config, 'RondaEnLinea');
   }
 
@@ -166,7 +185,15 @@ export class Sala extends Phaser.Scene {
     this.ocupado(true);
     this.estadoTexto.setText(`Conectando a la sala ${codigo}…`);
     this.red = new Red(this.game);
-    this.red.manejador = (t, d) => { if (t === 'inicio') this.lanzar(d, 'RondaInvitado'); };
+    this.red.manejador = (t, d) => {
+      if (t === 'hola') this.caraAnfitrion = caraValida(d?.perfil?.cara); // la cara de tu pareja
+      if (t === 'inicio') {
+        const config = { ...d, perfiles: d.perfiles.map((p) => ({ ...p })) };
+        config.perfiles[0].cara = this.caraAnfitrion || null;
+        config.perfiles[1].cara = this.perfil.cara || null;
+        this.lanzar(config, 'RondaInvitado');
+      }
+    };
     this.red.unirse(codigo, {
       alConectar: () => {
         this.estadoTexto.setText('¡Conectados! Empezando…');

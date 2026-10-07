@@ -17,10 +17,7 @@ export class EntradaTactil {
     this.escena = escena;
     this.toques = new Map(); // id del dedo → qué está haciendo
     this.reiniciarToques();
-    this.g = escena.add.graphics().setDepth(60).setScrollFactor(0);
-    this.etiquetas = BOTONES.map((b) => escena.add.text(b.x, b.y, b.texto, {
-      fontFamily: FUENTE, fontSize: b.id === 'burla' ? '26px' : b.id === 'cambiar' ? '24px' : '18px', color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(61).setScrollFactor(0).setAlpha(0.9));
+    this.g = null; // se dibuja en la capa del HUD (sin zoom), cuando esté lista
     escena.input.addPointer(3);
     escena.input.on('pointerdown', this.abajo, this);
     escena.input.on('pointermove', this.mover, this);
@@ -81,7 +78,20 @@ export class EntradaTactil {
     return r;
   }
 
+  // Los joysticks van en la escena del HUD: así no se agrandan ni se mueven con la cámara
+  capa() {
+    if (this.g && this.g.scene) return true;
+    const hud = this.escena.scene.get('HUD');
+    if (!hud || !hud.sys.isActive() || !hud.add) return false;
+    this.g = hud.add.graphics().setDepth(60);
+    BOTONES.forEach((b) => hud.add.text(b.x, b.y, b.texto, {
+      fontFamily: FUENTE, fontSize: b.id === 'burla' ? '26px' : b.id === 'cambiar' ? '24px' : '18px', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(61).setAlpha(0.9));
+    return true;
+  }
+
   dibujar() {
+    if (!this.capa()) return;
     const g = this.g;
     g.clear();
     for (const tipo of ['mover', 'apuntar']) {

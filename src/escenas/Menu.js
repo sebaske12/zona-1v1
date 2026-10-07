@@ -11,6 +11,19 @@ export class Menu extends Phaser.Scene {
     super('Menu');
   }
 
+  // Pregunta al servidor si hay una versión más nueva publicada; si la hay, ofrece actualizar
+  buscarActualizacion() {
+    fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d || !d.compilacion || d.compilacion === __COMPILACION__ || !this.scene.isActive()) return;
+        boton(this, 640, 40, '¡Hay una versión nueva! Toca aquí para actualizar', () => {
+          location.href = `${location.pathname}?v=${encodeURIComponent(d.compilacion)}`;
+        }, { ancho: 560, alto: 48, tam: 19, color: 0x1f8a52 });
+      })
+      .catch(() => { /* sin internet o en el PC de desarrollo: no pasa nada */ });
+  }
+
   init(data) {
     this.aviso = data?.aviso || null; // por ejemplo, si se cayó la conexión en línea
   }
@@ -21,6 +34,8 @@ export class Menu extends Phaser.Scene {
     const d = Guardado.leer();
     fondoMenu(this);
     if (this.aviso) texto(this, 640, 312, this.aviso, 18, '#ff7468', { fontStyle: 'bold' }).setOrigin(0.5);
+    texto(this, 1268, 712, `v${__VERSION__}`, 14, UI.suave).setOrigin(1, 1);
+    this.buscarActualizacion();
 
     const deco = this.add.graphics({ x: 640, y: 200 });
     deco.lineStyle(4, 0x7ea0ff, 0.3);

@@ -46,8 +46,16 @@ export class Arranque extends Phaser.Scene {
       d.fillStyle(0xd8432f, 1).fillTriangle(14, 1, 18, 4, 14, 7); // punta
     });
 
-    tex('bala', 12, 4, (d) => d.fillStyle(0xfff3b0, 1).fillRoundedRect(0, 0, 12, 4, 2));
-    tex('perdigon', 6, 6, (d) => d.fillStyle(0xffe08a, 1).fillCircle(3, 3, 3));
+    // Balas con borde oscuro: se ven sobre cualquier piso
+    tex('bala', 16, 6, (d) => {
+      d.fillStyle(0x0d111d, 0.8).fillRoundedRect(0, 0, 16, 6, 3);
+      d.fillStyle(0xfff3b0, 1).fillRoundedRect(1, 1, 14, 4, 2);
+      d.fillStyle(0xffffff, 1).fillRect(9, 2, 5, 2);
+    });
+    tex('perdigon', 8, 8, (d) => {
+      d.fillStyle(0x0d111d, 0.8).fillCircle(4, 4, 4);
+      d.fillStyle(0xffe08a, 1).fillCircle(4, 4, 3);
+    });
     tex('casquillo', 5, 3, (d) => d.fillStyle(0xd9a441, 1).fillRect(0, 0, 5, 3));
     tex('chispa', 4, 4, (d) => d.fillStyle(0xffffff, 1).fillRect(0, 0, 4, 4));
     tex('humo', 24, 24, (d) => {

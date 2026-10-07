@@ -1,19 +1,30 @@
 // La escena donde se juega una ronda: mapa, jugadores, balas, cajas, zona y airdrop.
 import Phaser from 'phaser';
-import { ANCHO, ALTO, CENTRO, FUENTE, BURLAS, RONDAS_PARA_GANAR } from '../config.js';
-import { ARMAS, GRANADA, GEL, CHALECO } from '../datos/armas.js';
+import { ANCHO, ALTO, CENTRO, FUENTE, BURLAS, RONDAS_PARA_GANAR, ZOOM_CELULAR } from '../config.js';
+import { ARMAS, GRANADA, GEL, CHALECO, nombreArma } from '../datos/armas.js';
 import { MAPAS } from '../datos/mapas.js';
 import { MODOS } from '../datos/modos.js';
 import { BOTIN_AIRDROP, sortear } from '../datos/botin.js';
 import { estadoZona, RADIO_INICIAL, AIRDROP } from '../datos/zona.js';
 import { statsDeJugador } from '../datos/ventajas.js';
 import { Jugador, RADIO_JUGADOR } from '../objetos/Jugador.js';
-import { crearEntradasLocales } from '../entrada/entradas.js';
+import { crearEntradasLocales, esTactil } from '../entrada/entradas.js';
 import { EntradaBot } from '../entrada/Bot.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { Musica } from '../sistemas/Musica.js';
 
 const CUENTA = 2.4; // segundos de "3, 2, 1"
+
+// "Sebas cayó por la escopeta de Ana", "Ana cayó en la zona"…
+const ARTICULO = { pistola: 'la', subfusil: 'el', escopeta: 'la', rifle: 'el', franco: 'el', dorado: 'el', cohetes: 'el', granada: 'la' };
+function comoCayo(j) {
+  if (j.causa === 'zona') return `${j.nombre} cayó en la zona`;
+  const golpe = j.ultimoGolpe;
+  if (!golpe) return `${j.nombre} cayó`;
+  if (golpe.atacante === j) return `${j.nombre} cayó por su propia explosión`;
+  const arma = j.causa || golpe.arma;
+  return `${j.nombre} cayó por ${ARTICULO[arma] ?? 'el'} ${nombreArma(arma).toLowerCase()} de ${golpe.atacante.nombre}`;
+}
 const CAMARA_LENTA = { escala: 0.3, dura: 1.6 };
 
 export class Ronda extends Phaser.Scene {
@@ -55,6 +66,9 @@ export class Ronda extends Phaser.Scene {
 
     this.zonaG = this.add.graphics().setDepth(4);
     this.entradas = this.crearEntradas();
+    this.indiceLocal = this.scene.key === 'RondaInvitado' ? 1 : 0; // quién juega en este aparato
+    this.vistaPropia = this.scene.key !== 'Ronda' || this.partida.bot || esTactil(this);
+    this.prepararVista();
 
     this.events.on('postupdate', this.dibujar, this);
     this.events.once('shutdown', () => {
@@ -67,6 +81,25 @@ export class Ronda extends Phaser.Scene {
 
     this.scene.launch('HUD', { ronda: this.scene.key });
     this.cameras.main.fadeIn(250, 13, 17, 29);
+  }
+
+  // En el celular la cámara sigue a tu jugador con zoom: en pantalla chica todo se ve más grande.
+  // Cuando hay un solo jugador en este aparato, se le marca con un anillo y "(tú)".
+  prepararVista() {
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    cam.removeBounds?.();
+    cam.setZoom(1).setScroll(0, 0);
+    const propio = this.jugadores[this.indiceLocal];
+    if (this.vistaPropia) propio.marcarPropio();
+    if (esTactil(this)) {
+      // La cámara puede pasarse un poco del borde del mapa: así tu jugador queda cerca del centro
+      // y nunca debajo de los botones táctiles
+      cam.setBounds(-300, -220, ANCHO + 600, ALTO + 440);
+      cam.setZoom(ZOOM_CELULAR);
+      cam.startFollow(propio.sprite, false, 0.15, 0.15);
+      cam.centerOn(propio.x, propio.y);
+    }
   }
 
   // RondaEnLinea la reemplaza: allá el jugador 2 llega por la red
@@ -640,8 +673,9 @@ export class Ronda extends Phaser.Scene {
     const caido = this.jugadores.find((j) => !j.vivo) || null;
     const cam = this.cameras.main;
     if (caido) {
+      cam.stopFollow();
       cam.pan(caido.x, caido.y, 700, 'Sine.easeInOut');
-      cam.zoomTo(1.25, 700);
+      cam.zoomTo(Math.max(1.25, cam.zoom * 1.15), 700);
     }
     const p = this.partida;
     if (ganador) {
@@ -649,6 +683,7 @@ export class Ronda extends Phaser.Scene {
       p.estadisticas[ganador.indice].rondas++;
       Sonido.tocar('ronda');
       this.mensajeGrande(`¡Ronda para ${ganador.nombre}!`, ganador.colorCss, 2500);
+      if (caido) this.mensaje(comoCayo(caido), '#e7eaf2', 2500);
     } else {
       this.mensajeGrande('¡Empate! Se repite la ronda', '#e7eaf2', 2500);
     }
@@ -689,9 +724,15 @@ export class Ronda extends Phaser.Scene {
     if (!j.vivo) return;
     j.destello = true;
     j.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
+    j.cabeza?.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     this.time.delayedCall(70, () => {
       j.destello = false;
       j.sprite.setTintMode(Phaser.TintModes.MULTIPLY).setTint(j.vivo ? j.color : 0x555b6e);
+      if (j.cabeza) {
+        j.cabeza.setTintMode(Phaser.TintModes.MULTIPLY);
+        if (j.vivo) j.cabeza.clearTint();
+        else j.cabeza.setTint(0x777777);
+      }
     });
   }
 

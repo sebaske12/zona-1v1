@@ -3,8 +3,10 @@ import Phaser from 'phaser';
 import { ARMAS, GRANADA, BOTIQUIN, CHALECO, GEL } from '../datos/armas.js';
 import { COLORES_JUGADOR, FUENTE, UI, colorVida } from '../config.js';
 import { Sonido } from '../sistemas/Sonido.js';
+import { conCara } from '../sistemas/Caras.js';
 
 export const RADIO_JUGADOR = 14;
+const RADIO_CABEZA = 19; // la cabeza con foto es más grande que el cuerpo, como un muñeco cabezón
 const RODADA = { multiplicador: 3, dura: 0.15, recarga: 2 };
 const ORDEN_OBJETOS = ['botiquin', 'granada', 'gel'];
 const MAX_OBJETOS = { botiquin: BOTIQUIN.max, granada: GRANADA.max, gel: GEL.max };
@@ -52,6 +54,21 @@ export class Jugador {
     // Partes que solo se dibujan
     this.armaSprite = escena.add.image(x, y, 'arma-pistola').setOrigin(0, 0.5).setDepth(9);
     this.accSprite = this.accesorio !== 'ninguno' ? escena.add.image(x, y, `acc-${this.accesorio}`).setDepth(11) : null;
+    // Con foto: cabeza grande de caricatura (más grande que el cuerpo) con un anillo del color del jugador
+    this.cabeza = null;
+    if (perfil.cara) {
+      this.anilloCabeza = escena.add.circle(x, y, RADIO_CABEZA + 3, this.color).setDepth(12);
+      this.cabeza = escena.add.image(x, y, 'cuerpo').setDepth(13).setVisible(false);
+      conCara(escena, perfil.cara, (clave) => {
+        if (!this.cabeza || !this.cabeza.active) return;
+        this.cabeza.setTexture(clave).setDisplaySize(RADIO_CABEZA * 2, RADIO_CABEZA * 2).setVisible(true);
+        this.escalaCabeza = this.cabeza.scaleX;
+        if (!this.vivo) this.cabeza.setTint(0x777777);
+      });
+      if (this.accSprite) this.accSprite.setVisible(false);
+    }
+    this.ultX = x;
+    this.ultY = y;
     this.etiqueta = escena.add.text(x, y - 36, this.nombre, { fontFamily: FUENTE, fontSize: '14px', color: this.colorCss, fontStyle: 'bold' })
       .setOrigin(0.5).setDepth(20).setStroke('#0d111d', 4);
     this.barra = escena.add.graphics().setDepth(20);
@@ -75,6 +92,12 @@ export class Jugador {
     this.recargandoHasta = 0;
     this.apuntandoHasta = 0;
     this.armaSprite.setTexture(`arma-${arma}`);
+  }
+
+  // El jugador de este aparato: anillo blanco y "(tú)" para encontrarse rápido
+  marcarPropio() {
+    this.anilloPropio = this.escena.add.graphics().setDepth(9);
+    this.etiqueta.setText(`${this.nombre} (tú)`);
   }
 
   darObjeto(tipo, cantidad = 1) {
@@ -239,7 +262,10 @@ export class Jugador {
     }
     this.vida = Math.max(0, this.vida - resto);
     if (atacante) this.ultimoGolpe = { atacante, arma };
-    if (this.vida <= 0) this.morir();
+    if (this.vida <= 0) {
+      this.causa = arma; // para contar cómo cayó
+      this.morir();
+    }
     return cantidad;
   }
 
@@ -252,6 +278,12 @@ export class Jugador {
     this.sprite.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0x555b6e);
     this.armaSprite.setVisible(false);
     this.etiqueta.setAlpha(0.5);
+    if (this.cabeza) {
+      // Cara gris y de lado: quedó "noqueado"
+      this.cabeza.setTintMode(Phaser.TintModes.MULTIPLY).setTint(0x777777);
+      this.anilloCabeza.setFillStyle(0x555b6e);
+      this.escena.tweens.add({ targets: [this.cabeza, this.anilloCabeza], angle: 90, alpha: 0.75, duration: 400 });
+    }
     this.barra.clear();
     this.anillo.clear();
     this.laser.clear();
@@ -264,15 +296,33 @@ export class Jugador {
     const escena = this.escena;
     this.armaSprite.setPosition(x + Math.cos(this.angulo) * 6, y + Math.sin(this.angulo) * 6).setRotation(this.angulo);
     if (this.accSprite) this.accSprite.setPosition(x, y).setRotation(this.angulo);
-    this.etiqueta.setPosition(x, y - 38);
+    const subir = this.cabeza ? 6 : 0; // con cabeza grande, el nombre y la barra van más arriba
+    this.etiqueta.setPosition(x, y - 38 - subir);
+    if (this.cabeza) {
+      // La cabeza rebota al caminar (se estira y se aplasta un poquito)
+      const moviendo = this.vivo && Math.hypot(x - this.ultX, y - this.ultY) > 0.5;
+      const rebote = moviendo ? Math.sin(escena.game.loop.time / 55) * 0.08 : 0;
+      const e = this.escalaCabeza || 1;
+      this.anilloCabeza.setPosition(x, y - 3);
+      this.cabeza.setPosition(x, y - 3);
+      if (this.vivo) this.cabeza.setScale(e * (1 + rebote), e * (1 - rebote));
+    }
+    this.ultX = x;
+    this.ultY = y;
+    const radioMarca = this.cabeza ? RADIO_CABEZA + 7 : 21;
+    if (this.anilloPropio) {
+      this.anilloPropio.clear();
+      if (this.vivo) this.anilloPropio.lineStyle(2, 0xffffff, 0.6).strokeCircle(x, y - (this.cabeza ? 3 : 0), radioMarca);
+    }
 
     this.barra.clear();
     if (this.vivo) {
       const ancho = 40;
+      const yb = y - 29 - subir;
       const p = Phaser.Math.Clamp(this.vida / this.vidaMax, 0, 1);
-      this.barra.fillStyle(0x0d111d, 0.85).fillRect(x - ancho / 2 - 1, y - 29, ancho + 2, 7);
-      this.barra.fillStyle(colorVida(p), 1).fillRect(x - ancho / 2, y - 28, ancho * p, 4);
-      if (this.chaleco > 0) this.barra.fillStyle(UI.chaleco, 1).fillRect(x - ancho / 2, y - 24, ancho * (this.chaleco / CHALECO), 2);
+      this.barra.fillStyle(0x0d111d, 0.85).fillRect(x - ancho / 2 - 1, yb, ancho + 2, 7);
+      this.barra.fillStyle(colorVida(p), 1).fillRect(x - ancho / 2, yb + 1, ancho * p, 4);
+      if (this.chaleco > 0) this.barra.fillStyle(UI.chaleco, 1).fillRect(x - ancho / 2, yb + 5, ancho * (this.chaleco / CHALECO), 2);
     }
 
     this.anillo.clear();
@@ -280,7 +330,7 @@ export class Jugador {
       const p = Phaser.Math.Clamp((escena.reloj - this.curandoDesde) / BOTIQUIN.tiempo, 0, 1);
       this.anillo.lineStyle(4, 0x3fd07f, 1);
       this.anillo.beginPath();
-      this.anillo.arc(x, y, 22, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2);
+      this.anillo.arc(x, y, radioMarca + 1, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2);
       this.anillo.strokePath();
     }
 
@@ -296,6 +346,10 @@ export class Jugador {
       const alpha = parpadeo ? 0.45 : 1;
       this.sprite.setAlpha(alpha);
       this.armaSprite.setAlpha(alpha);
+      if (this.cabeza) {
+        this.cabeza.setAlpha(alpha);
+        this.anilloCabeza.setAlpha(alpha);
+      }
       if (!this.destello) this.sprite.setTint(this.color);
     }
 

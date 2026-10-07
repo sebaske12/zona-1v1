@@ -86,7 +86,8 @@ export const Sonido = {
         salida.connect(ctx.destination);
         ruidoBuf = crearRuido();
       }
-      if (ctx.state === 'suspended') ctx.resume();
+      // iOS deja el sonido "interrumpido" después de una llamada o de cambiar de app
+      if (ctx.state !== 'running') ctx.resume();
     } catch (e) {
       ctx = null;
     }

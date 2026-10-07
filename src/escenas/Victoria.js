@@ -6,6 +6,9 @@ import { Guardado, registroDePartida } from '../sistemas/Guardado.js';
 import { nuevaPartida } from '../sistemas/Partida.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { boton, texto, fondoMenu } from '../ui/ui.js';
+import { esTactil } from '../entrada/entradas.js';
+import { sinCaras } from '../sistemas/Caras.js';
+import { mostrarCara } from '../ui/ui.js';
 import { Musica } from '../sistemas/Musica.js';
 
 export class Victoria extends Phaser.Scene {
@@ -44,12 +47,30 @@ export class Victoria extends Phaser.Scene {
     texto(this, 640, 82, '¡VICTORIA!', 76, cg.css, { fontStyle: 'bold' }).setOrigin(0.5).setStroke('#0d111d', 10);
     texto(this, 640, 152, `${p.perfiles[g].nombre} gana ${p.rondas[g]} – ${p.rondas[per]}`, 30, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
 
+    // La cara del ganador baila al lado del título
+    if (p.perfiles[g].cara) {
+      const anillo = this.add.circle(0, 0, 0, 0xffffff);
+      const cara = this.add.image(0, 0, 'cuerpo');
+      const caja = this.add.container(320, 100, [anillo, cara]);
+      mostrarCara(this, cara, anillo, p.perfiles[g].cara, cg.valor, 120);
+      this.tweens.add({ targets: caja, angle: { from: -10, to: 10 }, scale: { from: 0.95, to: 1.08 }, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+
     let y = 206;
     const apuesta = (p.apuestas[g] || '').trim();
     if (apuesta) {
       this.add.rectangle(640, 228, 780, 64, 0x2a1416).setStrokeStyle(2, 0xff7468);
       texto(this, 640, 228, `${p.perfiles[per].nombre} paga: ${apuesta}`, 26, '#ffd7d2', { fontStyle: 'bold', align: 'center', wordWrap: { width: 740 } }).setOrigin(0.5);
       y = 282;
+    }
+    // La cara del que perdió, chiquita y gris, temblando al lado de lo que tiene que pagar
+    if (p.perfiles[per].cara) {
+      const anillo = this.add.circle(0, 0, 0, 0xffffff);
+      const cara = this.add.image(0, 0, 'cuerpo').setTint(0xb0b0b0);
+      const caja = this.add.container(apuesta ? 196 : 640, apuesta ? 228 : 240, [anillo, cara]);
+      mostrarCara(this, cara, anillo, p.perfiles[per].cara, 0x555b6e, 60);
+      this.tweens.add({ targets: caja, x: caja.x + 3, duration: 60, yoyo: true, repeat: -1 });
+      if (!apuesta) y = 290;
     }
 
     const favorita = (e) => Object.entries(e.bajasPorArma).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
@@ -80,15 +101,19 @@ export class Victoria extends Phaser.Scene {
         red.manejador = (t, d) => {
           if (t === 'revancha' && red.esAnfitrion) this.revanchaEnLinea();
           if (t === 'inicio' && !red.esAnfitrion) {
-            this.registry.set('partida', nuevaPartida(d));
+            // La revancha llega sin fotos: se usan las caras que ya tenía esta partida
+            const anterior = this.registry.get('partida');
+            const config = { ...d, perfiles: d.perfiles.map((pf, i) => ({ ...pf, cara: anterior.perfiles[i]?.cara || null })) };
+            this.registry.set('partida', nuevaPartida(config));
             this.scene.start('RondaInvitado');
           }
         };
         this.events.once('shutdown', () => { red.manejador = null; });
       }
     } else {
-      boton(this, 500, 660, 'Revancha (Enter)', () => this.revancha(), { ancho: 280, color: UI.rojo });
-      boton(this, 790, 660, 'Menú (Esc)', () => this.scene.start('Menu'), { ancho: 220, color: UI.gris });
+      const celular = esTactil(this); // en el celular no hay teclas que mostrar
+      boton(this, 500, 660, celular ? 'Revancha' : 'Revancha (Enter)', () => this.revancha(), { ancho: 280, color: UI.rojo });
+      boton(this, 790, 660, celular ? 'Menú' : 'Menú (Esc)', () => this.scene.start('Menu'), { ancho: 220, color: UI.gris });
       this.input.keyboard.on('keydown-ENTER', () => this.revancha());
       this.input.keyboard.on('keydown-ESC', () => this.scene.start('Menu'));
     }
@@ -107,7 +132,7 @@ export class Victoria extends Phaser.Scene {
     if (red.esAnfitrion) {
       const p = this.registry.get('partida');
       const config = { perfiles: p.perfiles, mapa: p.mapa, modo: p.modo, vida: p.vida, apuestas: p.apuestas };
-      red.enviar('inicio', config);
+      red.enviar('inicio', sinCaras(config));
       this.registry.set('partida', nuevaPartida(config));
       this.scene.start('RondaEnLinea');
     } else {

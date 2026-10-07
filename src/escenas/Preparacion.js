@@ -8,6 +8,8 @@ import { nuevaPartida } from '../sistemas/Partida.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { boton, texto, fondoMenu, dibujarMiniMapa } from '../ui/ui.js';
 import { resumenTeclas } from '../entrada/Teclado.js';
+import { elegirFoto } from '../ui/Foto.js';
+import { mostrarCara } from '../ui/ui.js';
 import { Musica } from '../sistemas/Musica.js';
 
 export const ESTILO_INPUT = 'width:300px;padding:8px 12px;font:600 20px "Chakra Petch",sans-serif;border-radius:8px;'
@@ -73,6 +75,13 @@ export class Preparacion extends Phaser.Scene {
     col.prevArma = this.add.image(cx + 6 * 2.4, 326, 'arma-pistola').setOrigin(0, 0.5).setScale(2.4);
     col.prevCuerpo = this.add.image(cx, 326, 'cuerpo').setScale(2.4);
     col.prevAcc = this.add.image(cx, 326, 'acc-gorra').setScale(2.4);
+    // Con foto: la cabeza grande de caricatura encima del cuerpo
+    col.prevAnillo = this.add.circle(cx, 318, 52, 0xffffff).setVisible(false);
+    col.prevCara = this.add.image(cx, 318, 'cuerpo').setVisible(false);
+    if (!this.esBot(i)) {
+      col.btnFoto = boton(this, cx + 142, 306, '📷 Tu cara', () => this.foto(i), { ancho: 124, alto: 38, tam: 16, color: UI.azul });
+      col.btnQuitar = boton(this, cx + 142, 350, 'Quitar foto', () => { perfil.cara = null; this.refrescar(); }, { ancho: 124, alto: 32, tam: 14, color: UI.gris });
+    }
 
     texto(this, cx, 390, this.esBot(i) ? 'Vida del bot (dificultad)' : 'Vida inicial (hándicap)', 15, UI.suave).setOrigin(0.5);
     boton(this, cx - 80, 422, '−', () => this.cambiarVida(i, -10), { ancho: 44, alto: 38, tam: 24, color: UI.gris });
@@ -131,8 +140,10 @@ export class Preparacion extends Phaser.Scene {
       col.accesorios.forEach((b, k) => b.fondo.setFillStyle(ACCESORIOS[k].id === perfil.accesorio ? color.valor : UI.gris));
       col.prevCuerpo.setTint(color.valor);
       const acc = perfil.accesorio;
-      col.prevAcc.setVisible(acc !== 'ninguno');
+      col.prevAcc.setVisible(acc !== 'ninguno' && !perfil.cara);
       if (acc !== 'ninguno') col.prevAcc.setTexture(`acc-${acc}`);
+      mostrarCara(this, col.prevCara, col.prevAnillo, perfil.cara, color.valor, 92);
+      col.btnQuitar?.setVisible(!!perfil.cara);
       col.vida.setText(String(this.prep.vida[i]));
       if (!this.bot) col.apuestaTitulo.setText(`Si gana ${this.nombre(i)}, ${this.nombre(1 - i)} paga:`);
     });
@@ -144,6 +155,14 @@ export class Preparacion extends Phaser.Scene {
     const modo = MODOS[this.prep.modo];
     this.modoNombre.setText(modo.nombre);
     this.modoTexto.setText(modo.texto);
+  }
+
+  foto(i) {
+    elegirFoto((datos) => {
+      if (!datos || !this.scene.isActive()) return;
+      this.perfiles[i].cara = datos;
+      this.refrescar();
+    });
   }
 
   elegirColor(i, k) {

@@ -50,6 +50,9 @@ export class RondaInvitado extends Ronda {
     this.geles = this.add.group();
     this.crearJugadores();
     for (const j of this.jugadores) j.sprite.body.enable = false;
+    this.indiceLocal = 1; // el invitado siempre es el jugador 2
+    this.vistaPropia = true;
+    this.prepararVista();
     this.balasVis = [];
     this.granadasVis = [];
     this.recogiblesVis = [];
@@ -205,8 +208,10 @@ export class RondaInvitado extends Ronda {
   camaraFinal() {
     const caido = this.jugadores.find((j) => !j.vivo);
     if (!caido) return;
-    this.cameras.main.pan(caido.x, caido.y, 700, 'Sine.easeInOut');
-    this.cameras.main.zoomTo(1.25, 700);
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    cam.pan(caido.x, caido.y, 700, 'Sine.easeInOut');
+    cam.zoomTo(Math.max(1.25, cam.zoom * 1.15), 700);
   }
 
   sincronizarBalas(lista, dt) {

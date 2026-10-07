@@ -26,6 +26,9 @@ export const BURLAS = ['😂', '🫵', '💀'];
 
 export const RONDAS_PARA_GANAR = 3;
 
+// En el celular la cámara sigue a tu jugador con este zoom (todo se ve más grande)
+export const ZOOM_CELULAR = 1.3;
+
 // Colores de la interfaz
 export const UI = {
   texto: '#e7eaf2',
