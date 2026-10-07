@@ -25,6 +25,7 @@ export class Ventajas extends Phaser.Scene {
   create() {
     this.partida = this.registry.get('partida');
     this.terminado = false;
+    this.botPensando = false; // Phaser reutiliza la escena: hay que limpiar lo de la vez anterior
     const p = this.partida;
     this.sorteo = this.opcionesDadas || sortearOpciones(p);
     this.red = this.remoto !== null ? this.registry.get('red') : null;
@@ -119,6 +120,19 @@ export class Ventajas extends Phaser.Scene {
     const leidas = this.teclas.map((t) => ({ izq: JustDown(t.izq), der: JustDown(t.der), ok: JustDown(t.ok) }));
     const enter = JustDown(this.enter);
     if (lado.listo || !this.esLocal(i)) return;
+
+    // En el entrenamiento, el bot elige solo
+    if (this.partida.bot && i === 1) {
+      if (!this.botPensando) {
+        this.botPensando = true;
+        this.time.delayedCall(900, () => {
+          lado.sel = Phaser.Math.Between(0, lado.opciones.length - 1);
+          this.refrescar();
+          this.time.delayedCall(400, () => this.elegir(1));
+        });
+      }
+      return;
+    }
 
     // En línea, quien juega en este aparato usa las teclas del jugador 1
     const t = this.remoto === null ? leidas[i] : leidas[0];

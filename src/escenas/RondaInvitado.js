@@ -35,6 +35,8 @@ export class RondaInvitado extends Ronda {
     this.avisos = new Set();
     this.zona = estadoZona(0, this.modo.fases);
     this.fotos = [];
+    this.humoAirdrop = null;
+    this.humoParado = false;
     this.proximoEnvio = 0;
     this.toquesGuardados = { rodada: false, usar: false, cambiar: false, burla: 0 };
     this.time.timeScale = 1;

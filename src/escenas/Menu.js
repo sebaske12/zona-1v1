@@ -40,10 +40,11 @@ export class Menu extends Phaser.Scene {
     }
 
     boton(this, 640, 420, 'Jugar', () => this.scene.start('Preparacion'), { ancho: 340, alto: 64, tam: 28, color: UI.rojo });
-    boton(this, 640, 496, 'Jugar en línea', () => this.scene.start('Sala'), { ancho: 340, color: UI.azul });
-    boton(this, 640, 564, 'Historial', () => this.scene.start('Historial'), { ancho: 340, color: UI.gris });
-    boton(this, 640, 632, 'Controles y ajustes', () => this.scene.start('Ajustes'), { ancho: 340, color: UI.gris });
-    texto(this, 640, 696, 'Enter para jugar en este PC', 15, UI.suave).setOrigin(0.5);
+    boton(this, 640, 494, 'Jugar en línea', () => this.scene.start('Sala'), { ancho: 340, color: UI.azul });
+    boton(this, 640, 560, 'Entrenar contra el bot', () => this.scene.start('Preparacion', { bot: true }), { ancho: 340, color: UI.gris });
+    boton(this, 554, 626, 'Historial', () => this.scene.start('Historial'), { ancho: 166, color: UI.gris, tam: 20 });
+    boton(this, 726, 626, 'Ajustes', () => this.scene.start('Ajustes'), { ancho: 166, color: UI.gris, tam: 20 });
+    texto(this, 640, 690, 'Enter para jugar en este PC', 15, UI.suave).setOrigin(0.5);
 
     this.input.keyboard.on('keydown-ENTER', () => this.scene.start('Preparacion'));
   }

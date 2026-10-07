@@ -1,7 +1,8 @@
 // Estado de una partida completa (al mejor de 5). Vive en el registro de Phaser
 // para que todas las escenas lo vean: this.registry.get('partida').
-export function nuevaPartida({ perfiles, mapa, modo, vida, apuestas }) {
+export function nuevaPartida({ perfiles, mapa, modo, vida, apuestas, bot = false }) {
   return {
+    bot, // true en el modo entrenamiento: el jugador 2 lo maneja la computadora
     perfiles: perfiles.map((p) => ({ ...p })),
     mapa,
     modo,

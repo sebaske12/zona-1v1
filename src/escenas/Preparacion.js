@@ -21,6 +21,10 @@ export class Preparacion extends Phaser.Scene {
     super('Preparacion');
   }
 
+  init(data) {
+    this.bot = !!data?.bot; // modo entrenamiento: el jugador 2 es la computadora
+  }
+
   create() {
     this.input.keyboard.clearCaptures();
     this.saliendo = false;
@@ -29,9 +33,13 @@ export class Preparacion extends Phaser.Scene {
     this.prep = { ...datos.preparacion, vida: [...datos.preparacion.vida], apuestas: [...datos.preparacion.apuestas] };
     if (!MAPAS[this.prep.mapa]) this.prep.mapa = 'bodega';
     if (!MODOS[this.prep.modo]) this.prep.modo = 'clasico';
+    if (this.bot) {
+      this.perfiles[1] = { nombre: 'Bot', color: this.perfiles[1].color, accesorio: 'casco' };
+      this.prep.vida[1] = 80; // empieza fácil; se sube con +
+    }
 
     fondoMenu(this);
-    texto(this, 640, 38, 'Preparen el duelo', 38, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
+    texto(this, 640, 38, this.bot ? 'Entrenamiento contra el bot' : 'Preparen el duelo', 38, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
     this.columnas = [0, 1].map((i) => this.crearColumna(i, i === 0 ? 220 : 1060));
     this.crearCentro();
 
@@ -68,7 +76,7 @@ export class Preparacion extends Phaser.Scene {
     col.prevCuerpo = this.add.image(cx, 326, 'cuerpo').setScale(2.4);
     col.prevAcc = this.add.image(cx, 326, 'acc-gorra').setScale(2.4);
 
-    texto(this, cx, 390, 'Vida inicial (hándicap)', 15, UI.suave).setOrigin(0.5);
+    texto(this, cx, 390, this.esBot(i) ? 'Vida del bot (dificultad)' : 'Vida inicial (hándicap)', 15, UI.suave).setOrigin(0.5);
     boton(this, cx - 80, 422, '−', () => this.cambiarVida(i, -10), { ancho: 44, alto: 38, tam: 24, color: UI.gris });
     col.vida = texto(this, cx, 422, '', 24, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
     boton(this, cx + 80, 422, '+', () => this.cambiarVida(i, 10), { ancho: 44, alto: 38, tam: 24, color: UI.gris });
@@ -79,8 +87,17 @@ export class Preparacion extends Phaser.Scene {
     col.apuesta.node.maxLength = 60;
     col.apuesta.node.placeholder = i === 0 ? 'ej.: lava los platos' : 'ej.: invita el helado';
 
-    texto(this, cx, 560, CONTROLES[i], 14, UI.suave, { align: 'center', lineSpacing: 4 }).setOrigin(0.5, 0);
+    texto(this, cx, 560, this.esBot(i) ? 'La computadora maneja este jugador.' : CONTROLES[i], 14, UI.suave, { align: 'center', lineSpacing: 4 }).setOrigin(0.5, 0);
+    if (this.esBot(i)) {
+      col.nombre.node.disabled = true;
+      col.apuesta.setVisible(false);
+      col.apuestaTitulo.setVisible(false);
+    }
     return col;
+  }
+
+  esBot(i) {
+    return this.bot && i === 1;
   }
 
   crearCentro() {
@@ -119,7 +136,7 @@ export class Preparacion extends Phaser.Scene {
       col.prevAcc.setVisible(acc !== 'ninguno');
       if (acc !== 'ninguno') col.prevAcc.setTexture(`acc-${acc}`);
       col.vida.setText(String(this.prep.vida[i]));
-      col.apuestaTitulo.setText(`Si gana ${this.nombre(i)}, ${this.nombre(1 - i)} paga:`);
+      if (!this.bot) col.apuestaTitulo.setText(`Si gana ${this.nombre(i)}, ${this.nombre(1 - i)} paga:`);
     });
     const mapa = MAPAS[this.prep.mapa];
     this.mapaNombre.setText(mapa.nombre);
@@ -139,7 +156,7 @@ export class Preparacion extends Phaser.Scene {
   }
 
   cambiarVida(i, delta) {
-    this.prep.vida[i] = Phaser.Math.Clamp(this.prep.vida[i] + delta, 100, 150);
+    this.prep.vida[i] = Phaser.Math.Clamp(this.prep.vida[i] + delta, this.esBot(i) ? 40 : 100, 150);
     this.refrescar();
   }
 
@@ -159,15 +176,24 @@ export class Preparacion extends Phaser.Scene {
     });
     if (this.perfiles[0].nombre.toLowerCase() === this.perfiles[1].nombre.toLowerCase()) this.perfiles[1].nombre += ' 2';
     Guardado.actualizar((d) => {
-      d.perfiles = this.perfiles;
-      d.preparacion = this.prep;
+      if (this.bot) {
+        // En el entrenamiento no se toca el perfil ni la apuesta de tu pareja
+        d.perfiles[0] = this.perfiles[0];
+        d.preparacion.vida[0] = this.prep.vida[0];
+        d.preparacion.mapa = this.prep.mapa;
+        d.preparacion.modo = this.prep.modo;
+      } else {
+        d.perfiles = this.perfiles;
+        d.preparacion = this.prep;
+      }
     });
     this.registry.set('partida', nuevaPartida({
       perfiles: this.perfiles,
       mapa: this.prep.mapa,
       modo: this.prep.modo,
       vida: this.prep.vida,
-      apuestas: this.prep.apuestas,
+      apuestas: this.bot ? ['', ''] : this.prep.apuestas,
+      bot: this.bot,
     }));
     Sonido.desbloquear();
     this.scene.start('Ronda');

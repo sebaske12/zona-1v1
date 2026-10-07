@@ -1,0 +1,16 @@
+{
+  "name": "Zona 1v1",
+  "short_name": "Zona 1v1",
+  "description": "Duelo en la zona para dos.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0d111d",
+  "theme_color": "#0d111d",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

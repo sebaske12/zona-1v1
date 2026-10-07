@@ -9,6 +9,7 @@ import { estadoZona, RADIO_INICIAL, AIRDROP } from '../datos/zona.js';
 import { statsDeJugador } from '../datos/ventajas.js';
 import { Jugador, RADIO_JUGADOR } from '../objetos/Jugador.js';
 import { crearEntradasLocales } from '../entrada/entradas.js';
+import { EntradaBot } from '../entrada/Bot.js';
 import { Sonido } from '../sistemas/Sonido.js';
 
 const CUENTA = 2.4; // segundos de "3, 2, 1"
@@ -33,6 +34,8 @@ export class Ronda extends Phaser.Scene {
     this.mensajes = [];
     this.grande = null;
     this.danoZonaAcum = [0, 0];
+    this.humoAirdrop = null;
+    this.ganadorRonda = null;
     this.proximoCaos = this.modo.caos || 0;
     this.zona = estadoZona(0, this.modo.fases);
 
@@ -67,7 +70,9 @@ export class Ronda extends Phaser.Scene {
 
   // RondaEnLinea la reemplaza: allá el jugador 2 llega por la red
   crearEntradas() {
-    return crearEntradasLocales(this);
+    const entradas = crearEntradasLocales(this);
+    if (this.partida.bot) entradas[1] = new EntradaBot(this, 1); // modo entrenamiento
+    return entradas;
   }
 
   // ---------- Construcción ----------
