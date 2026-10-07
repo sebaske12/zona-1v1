@@ -3,7 +3,7 @@
 import Phaser from 'phaser';
 import { Guardado } from '../sistemas/Guardado.js';
 
-const { JustDown, KeyCodes } = Phaser.Input.Keyboard;
+const { KeyCodes } = Phaser.Input.Keyboard;
 
 // Teclas de fábrica. Cada jugador puede cambiarlas en Ajustes → Cambiar teclas.
 export const TECLAS = [
@@ -75,24 +75,46 @@ export function resumenTeclas(i) {
   return `${mover} · ${dispara} dispara · ${n('rodada')} rueda\n${n('usar')} usa objeto · ${n('cambiar')} cambia · ${n('burla1')} ${n('burla2')} ${n('burla3')} burlas`;
 }
 
+// Avisa en el momento exacto en que se aprieta la tecla (aunque se suelte enseguida).
+// Revisar "¿está apretada?" una vez por cuadro pierde los toques muy rápidos.
+export function alApretar(tecla, fn) {
+  tecla.on('down', fn);
+}
+
 export class EntradaTeclado {
   constructor(escena, teclas, extra = {}) {
     this.t = escena.input.keyboard.addKeys(teclas);
     this.extraDisparar = (extra.disparar || []).map((k) => escena.input.keyboard.addKey(k));
+    this.reiniciar();
+    const t = this.t;
+    alApretar(t.rodada, () => { this.toques.rodada = true; });
+    alApretar(t.usar, () => { this.toques.usar = true; });
+    alApretar(t.cambiar, () => { this.toques.cambiar = true; });
+    alApretar(t.burla1, () => { this.toques.burla = 1; });
+    alApretar(t.burla2, () => { this.toques.burla = 2; });
+    alApretar(t.burla3, () => { this.toques.burla = 3; });
+    for (const k of [t.disparar, ...this.extraDisparar]) alApretar(k, () => { this.toques.disparo = true; });
+  }
+
+  reiniciar() {
+    this.toques = { rodada: false, usar: false, cambiar: false, burla: 0, disparo: false };
   }
 
   leer() {
     const t = this.t;
+    const g = this.toques;
+    this.reiniciar();
     return {
       moverX: (t.derecha.isDown ? 1 : 0) - (t.izquierda.isDown ? 1 : 0),
       moverY: (t.abajo.isDown ? 1 : 0) - (t.arriba.isDown ? 1 : 0),
       apuntarX: 0,
       apuntarY: 0, // con teclado el apuntado es asistido
-      disparar: t.disparar.isDown || this.extraDisparar.some((k) => k.isDown),
-      rodada: JustDown(t.rodada),
-      usar: JustDown(t.usar),
-      cambiar: JustDown(t.cambiar),
-      burla: JustDown(t.burla1) ? 1 : JustDown(t.burla2) ? 2 : JustDown(t.burla3) ? 3 : 0,
+      // Mantener dispara seguido; un toque rapidísimo igual cuenta como un disparo
+      disparar: t.disparar.isDown || this.extraDisparar.some((k) => k.isDown) || g.disparo,
+      rodada: g.rodada,
+      usar: g.usar,
+      cambiar: g.cambiar,
+      burla: g.burla,
     };
   }
 }

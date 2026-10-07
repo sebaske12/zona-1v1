@@ -38,6 +38,27 @@ const config = {
   scene: [Arranque, Menu, Preparacion, Historial, Ajustes, Teclas, Sala, Ronda, RondaEnLinea, RondaInvitado, HUD, Ventajas, Victoria],
 };
 
+// Arreglo para Phaser: cuando en un mismo cuadro llegan varios eventos de teclado (soltar una tecla
+// y tocar otra muy rápido), Phaser volvía a procesar la fila entera y repetía el "tecla apretada":
+// Esc pausaba y quitaba la pausa de una vez, o un toque de "usar" podía contar dos veces.
+// Aquí cada escena procesa cada evento una sola vez.
+const actualizarTeclado = Phaser.Input.Keyboard.KeyboardPlugin.prototype.update;
+Phaser.Input.Keyboard.KeyboardPlugin.prototype.update = function () {
+  const manager = this.manager;
+  const fila = manager.queue;
+  if (!fila.length || !this.isActive()) return;
+  const vistos = this.eventosVistos || (this.eventosVistos = new WeakSet());
+  const nuevos = fila.filter((e) => !vistos.has(e));
+  if (!nuevos.length) return;
+  nuevos.forEach((e) => vistos.add(e));
+  manager.queue = nuevos;
+  try {
+    actualizarTeclado.call(this);
+  } finally {
+    manager.queue = fila;
+  }
+};
+
 // iOS y los navegadores solo dejan sonar después del primer toque o tecla
 for (const evento of ['pointerdown', 'keydown', 'touchend']) {
   window.addEventListener(evento, () => Sonido.desbloquear(), { passive: true });

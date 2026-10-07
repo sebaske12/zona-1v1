@@ -2,8 +2,11 @@
 // Produce la misma "intención" que un teclado: el jugador no sabe que es un bot.
 import Phaser from 'phaser';
 import { ANCHO, ALTO, CENTRO } from '../config.js';
+import { RADIO_JUGADOR } from '../objetos/Jugador.js';
 
-const CELDA = 40; // el mapa se divide en cuadritos para buscar caminos
+// El mapa se divide en cuadritos para buscar caminos. Con 20 px caben las puertas de las casas
+// (que no calzan con una cuadrícula más gruesa) y el bot no se queda pegado a las paredes.
+const CELDA = 20;
 const DISTANCIA_PREFERIDA = { pistola: 260, subfusil: 190, escopeta: 110, rifle: 320, dorado: 320, franco: 560, cohetes: 320 };
 const VECINOS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
@@ -31,10 +34,14 @@ export class EntradaBot {
     this.cols = Math.ceil(ANCHO / CELDA);
     this.filas = Math.ceil(ALTO / CELDA);
     this.bloqueada = new Uint8Array(this.cols * this.filas);
+    // Un cuadrito sirve si el cuerpo del jugador cabe con su centro ahí sin tocar ningún muro
+    const holgura = RADIO_JUGADOR + 1;
+    const cuerpo = new Phaser.Geom.Circle(0, 0, holgura);
     for (let f = 0; f < this.filas; f++) {
       for (let c = 0; c < this.cols; c++) {
-        const zona = new Phaser.Geom.Rectangle(c * CELDA + 4, f * CELDA + 4, CELDA - 8, CELDA - 8);
-        if (this.escena.rectMuros.some((m) => Phaser.Geom.Intersects.RectangleToRectangle(zona, m))) this.bloqueada[f * this.cols + c] = 1;
+        cuerpo.setPosition(c * CELDA + CELDA / 2, f * CELDA + CELDA / 2);
+        const fuera = cuerpo.x < holgura || cuerpo.y < holgura || cuerpo.x > ANCHO - holgura || cuerpo.y > ALTO - holgura;
+        if (fuera || this.escena.rectMuros.some((m) => Phaser.Geom.Intersects.CircleToRectangle(cuerpo, m))) this.bloqueada[f * this.cols + c] = 1;
       }
     }
   }
@@ -197,7 +204,7 @@ export class EntradaBot {
       this.camino = this.buscarCamino(yo, objetivo);
       this.proximoPlan = t + 0.5;
     }
-    while (this.camino.length && Phaser.Math.Distance.Between(yo.x, yo.y, this.camino[0].x, this.camino[0].y) < 14) this.camino.shift();
+    while (this.camino.length && Phaser.Math.Distance.Between(yo.x, yo.y, this.camino[0].x, this.camino[0].y) < 10) this.camino.shift();
     const siguiente = this.camino[0] || objetivo;
     return new Phaser.Math.Vector2(siguiente.x - yo.x, siguiente.y - yo.y);
   }

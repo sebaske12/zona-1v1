@@ -4,12 +4,11 @@ import Phaser from 'phaser';
 import { COLORES_JUGADOR, UI } from '../config.js';
 import { VENTAJAS, MAX_VENTAJAS, sortearOpciones } from '../datos/ventajas.js';
 import { indiceDeControl, esTactil } from '../entrada/entradas.js';
-import { teclasDe, nombreTecla } from '../entrada/Teclado.js';
+import { teclasDe, nombreTecla, alApretar } from '../entrada/Teclado.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { texto, fondoMenu } from '../ui/ui.js';
 import { Musica } from '../sistemas/Musica.js';
 
-const { JustDown } = Phaser.Input.Keyboard;
 
 // Las cartas se eligen con las teclas de cada uno: izquierda/derecha para moverse y disparar para elegir
 const teclasMenu = (i) => {
@@ -47,8 +46,16 @@ export class Ventajas extends Phaser.Scene {
 
     this.lados = [0, 1].map((i) => this.crearLado(i));
     this.turno = this.lados[this.perdedor].listo ? 1 - this.perdedor : this.perdedor;
-    this.teclas = [this.input.keyboard.addKeys(teclasMenu(0)), this.input.keyboard.addKeys(teclasMenu(1))];
-    this.enter = this.input.keyboard.addKey('ENTER');
+    // Cada tecla avisa en el momento en que se aprieta (así no se pierde un toque rápido)
+    const vacio = () => ({ izq: false, der: false, ok: false });
+    this.pulsado = [vacio(), vacio()];
+    this.enterPulsado = false;
+    [teclasMenu(0), teclasMenu(1)].forEach((nombres, i) => {
+      const t = this.input.keyboard.addKeys(nombres);
+      for (const accion of ['izq', 'der', 'ok']) alApretar(t[accion], () => { this.pulsado[i][accion] = true; });
+    });
+    alApretar(this.input.keyboard.addKey('ENTER'), () => { this.enterPulsado = true; });
+    this.vacio = vacio;
     this.padAntes = [{}, {}];
     this.refrescar();
     // Se escucha a la red cuando las cartas ya existen: si tu pareja eligió mientras esta pantalla
@@ -131,9 +138,11 @@ export class Ventajas extends Phaser.Scene {
     if (this.terminado) return;
     const i = this.turno;
     const lado = this.lados[i];
-    // Se leen todas las teclas para que no queden apretadas "guardadas"
-    const leidas = this.teclas.map((t) => ({ izq: JustDown(t.izq), der: JustDown(t.der), ok: JustDown(t.ok) }));
-    const enter = JustDown(this.enter);
+    // Se leen (y se borran) todos los toques para que no queden "guardados" para después
+    const leidas = this.pulsado;
+    this.pulsado = [this.vacio(), this.vacio()];
+    const enter = this.enterPulsado;
+    this.enterPulsado = false;
     if (lado.listo || !this.esLocal(i)) return;
 
     // En el entrenamiento, el bot elige solo
