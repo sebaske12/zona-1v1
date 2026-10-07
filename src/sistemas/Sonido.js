@@ -47,6 +47,7 @@ const SONIDOS = {
   rifle: (t) => { ruido(t, 0.1, { vol: 0.5, frec: 3200, frecFin: 600 }); tono(t, 0.08, { frec: 200, frecFin: 60, vol: 0.2 }); },
   escopeta: (t) => { ruido(t, 0.28, { vol: 0.8, frec: 1800, frecFin: 200 }); tono(t, 0.16, { frec: 130, frecFin: 40, tipo: 'sawtooth', vol: 0.3 }); },
   franco: (t) => { ruido(t, 0.4, { vol: 0.9, frec: 4000, frecFin: 150 }); tono(t, 0.3, { frec: 500, frecFin: 45, tipo: 'sawtooth', vol: 0.3 }); },
+  cohete: (t) => { ruido(t, 0.4, { vol: 0.45, filtro: 'bandpass', frec: 900, frecFin: 250 }); tono(t, 0.3, { frec: 110, frecFin: 55, tipo: 'sine', vol: 0.35 }); },
   apuntar: (t) => { tono(t, 0.12, { frec: 1200, frecFin: 1800, tipo: 'sine', vol: 0.12 }); },
   golpe: (t) => { tono(t, 0.06, { frec: 900, frecFin: 500, vol: 0.12 }); },
   muerte: (t) => { tono(t, 0.5, { frec: 320, frecFin: 50, tipo: 'sawtooth', vol: 0.25 }); ruido(t, 0.3, { vol: 0.3, frec: 800 }); },
@@ -100,4 +101,7 @@ export const Sonido = {
 
   get activo() { return activo; },
   set activo(v) { activo = v; },
+
+  // Para la música: el mismo "parlante" de los efectos, solo si ya está sonando
+  get contexto() { return ctx && ctx.state === 'running' ? ctx : null; },
 };

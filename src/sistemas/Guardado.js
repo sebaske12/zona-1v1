@@ -9,7 +9,7 @@ const base = () => ({
     { nombre: 'Jugador 2', color: 1, accesorio: 'ninguno' },
   ],
   preparacion: { mapa: 'bodega', modo: 'clasico', vida: [100, 100], apuestas: ['', ''] },
-  ajustes: { sonido: true, controlParaJ2: false },
+  ajustes: { sonido: true, musica: true, controlParaJ2: false, teclas: [{}, {}] },
   partidas: [],
 });
 

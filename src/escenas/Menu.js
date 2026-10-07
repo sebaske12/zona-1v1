@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import { UI } from '../config.js';
 import { Guardado, resumenRivalidad } from '../sistemas/Guardado.js';
 import { boton, texto, fondoMenu, circuloPunteado } from '../ui/ui.js';
+import { Musica } from '../sistemas/Musica.js';
 
 export class Menu extends Phaser.Scene {
   constructor() {
@@ -14,6 +15,7 @@ export class Menu extends Phaser.Scene {
   }
 
   create() {
+    Musica.poner('menu');
     this.input.keyboard.clearCaptures();
     const d = Guardado.leer();
     fondoMenu(this);

@@ -7,6 +7,7 @@ import { Guardado } from '../sistemas/Guardado.js';
 import { nuevaPartida } from '../sistemas/Partida.js';
 import { Red } from '../red/Red.js';
 import { boton, texto, fondoMenu } from '../ui/ui.js';
+import { Musica } from '../sistemas/Musica.js';
 import { ESTILO_INPUT } from './Preparacion.js';
 
 export class Sala extends Phaser.Scene {
@@ -15,6 +16,7 @@ export class Sala extends Phaser.Scene {
   }
 
   create() {
+    Musica.poner('menu');
     this.input.keyboard.clearCaptures();
     this.registry.get('red')?.cerrar();
     this.registry.set('red', null);

@@ -3,6 +3,7 @@
 // suavizando el movimiento entre una foto y la siguiente.
 import Phaser from 'phaser';
 import { Ronda } from './Ronda.js';
+import { TIPOS_BALA } from './RondaEnLinea.js';
 import { CENTRO } from '../config.js';
 import { BOTIQUIN } from '../datos/armas.js';
 import { MAPAS } from '../datos/mapas.js';
@@ -106,7 +107,7 @@ export class RondaInvitado extends Ronda {
         case 'burla': this.verBurla(this.jugadores[e.i], e.n); break;
         case 'shake': this.cameras.main.shake(e.d, e.i); break;
         case 'rayo': this.trazo(e.x1, e.y1, e.x2, e.y2); break;
-        case 'boom': this.destelloExplosion(e.x, e.y); break;
+        case 'boom': this.destelloExplosion(e.x, e.y, e.r); break;
         case 'rodada': this.fantasma(this.jugadores[e.i]); break;
         case 'msg': this.mensaje(e.t, e.c, e.d); break;
         case 'grande': this.mensajeGrande(e.t, e.c, e.d); break;
@@ -216,7 +217,7 @@ export class RondaInvitado extends Ronda {
         img.setVisible(false);
         return;
       }
-      img.setVisible(true).setTexture(b[4] ? 'perdigon' : 'bala')
+      img.setVisible(true).setTexture(TIPOS_BALA[b[4]] || 'bala')
         .setPosition(b[0] + b[2] * dt, b[1] + b[3] * dt).setRotation(Math.atan2(b[3], b[2]));
     });
   }

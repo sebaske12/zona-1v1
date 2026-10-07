@@ -11,6 +11,7 @@ import { Jugador, RADIO_JUGADOR } from '../objetos/Jugador.js';
 import { crearEntradasLocales } from '../entrada/entradas.js';
 import { EntradaBot } from '../entrada/Bot.js';
 import { Sonido } from '../sistemas/Sonido.js';
+import { Musica } from '../sistemas/Musica.js';
 
 const CUENTA = 2.4; // segundos de "3, 2, 1"
 const CAMARA_LENTA = { escala: 0.3, dura: 1.6 };
@@ -210,6 +211,9 @@ export class Ronda extends Phaser.Scene {
   dibujar() {
     for (const j of this.jugadores) j.dibujar();
     this.dibujarZona();
+    // La música se acelera cuando la zona entra en su última fase
+    const ultima = this.modo.fases[this.modo.fases.length - 1];
+    Musica.poner(this.zona.dano > 0 && this.zona.dano >= ultima.dano ? 'tension' : 'ronda');
   }
 
   alternarPausa() {
@@ -427,12 +431,13 @@ export class Ronda extends Phaser.Scene {
       if (!bala) return;
       bala.enableBody(true, bx, by, true, true);
       bala.esBala = true;
-      bala.setTexture(d.balas > 1 ? 'perdigon' : 'bala').setRotation(a).setDepth(11);
+      bala.setTexture(d.textura || (d.balas > 1 ? 'perdigon' : 'bala')).setRotation(a).setDepth(11);
       bala.body.setCircle(3, bala.width / 2 - 3, bala.height / 2 - 3);
       bala.dueno = j;
       bala.dano = d.dano;
       bala.arma = j.arma;
       bala.restante = alcance;
+      bala.explosivo = d.explosivo || null; // los cohetes explotan
       this.physics.velocityFromRotation(a, velocidad, bala.body.velocity);
     }
   }
@@ -477,12 +482,17 @@ export class Ronda extends Phaser.Scene {
     for (const b of this.balas.getChildren()) {
       if (!b.active) continue;
       b.restante -= b.body.speed * dt;
-      if (b.restante <= 0 || b.x < -40 || b.x > ANCHO + 40 || b.y < -40 || b.y > ALTO + 40) b.disableBody(true, true);
+      if (b.restante <= 0 && b.explosivo) this.detonar(b);
+      else if (b.restante <= 0 || b.x < -40 || b.x > ANCHO + 40 || b.y < -40 || b.y > ALTO + 40) b.disableBody(true, true);
     }
   }
 
   balaChoca(bala) {
     if (!bala.active) return;
+    if (bala.explosivo) {
+      this.detonar(bala);
+      return;
+    }
     this.fxChispas.explode(4, bala.x, bala.y);
     bala.disableBody(true, true);
   }
@@ -490,8 +500,18 @@ export class Ronda extends Phaser.Scene {
   balaGolpea(bala, victima) {
     if (!bala.active || !victima || !victima.vivo || bala.dueno === victima) return;
     if (victima.rodando) return; // la rodada esquiva: la bala sigue de largo
+    if (bala.explosivo) {
+      this.detonar(bala);
+      return;
+    }
     bala.disableBody(true, true);
     this.aplicarDano(victima, bala.dano, bala.dueno, bala.arma, bala.x, bala.y);
+  }
+
+  detonar(bala) {
+    const { x, y, dueno, explosivo, arma } = bala;
+    bala.disableBody(true, true);
+    this.explosion(x, y, dueno, explosivo.dano, explosivo.radio, arma);
   }
 
   aplicarDano(victima, cantidad, atacante, arma, x, y) {
@@ -547,20 +567,24 @@ export class Ronda extends Phaser.Scene {
     const { x, y } = g;
     const dueno = g.dueno;
     g.destroy();
+    this.explosion(x, y, dueno, GRANADA.dano, GRANADA.radio, 'granada');
+  }
+
+  // Granadas y cohetes: daño en un círculo. Al que la causó le hace la mitad.
+  explosion(x, y, dueno, dano, radio, arma) {
     Sonido.tocar('explosion');
     this.cameras.main.shake(220, 0.012);
     this.fxFuego.explode(30, x, y);
     this.fxHumo.explode(14, x, y);
-    this.destelloExplosion(x, y);
+    this.destelloExplosion(x, y, radio);
     for (const j of this.jugadores) {
       if (!j.vivo) continue;
-      if (Phaser.Math.Distance.Between(x, y, j.x, j.y) <= GRANADA.radio + RADIO_JUGADOR) {
-        const dano = j === dueno ? GRANADA.dano * GRANADA.danoPropio : GRANADA.dano;
-        this.aplicarDano(j, dano, dueno, 'granada', j.x, j.y);
+      if (Phaser.Math.Distance.Between(x, y, j.x, j.y) <= radio + RADIO_JUGADOR) {
+        this.aplicarDano(j, j === dueno ? dano * GRANADA.danoPropio : dano, dueno, arma, j.x, j.y);
       }
     }
     for (const gel of [...this.geles.getChildren()]) {
-      if (Phaser.Math.Distance.Between(x, y, gel.x, gel.y) <= GRANADA.radio + 40) this.danarGel(gel, GRANADA.dano);
+      if (Phaser.Math.Distance.Between(x, y, gel.x, gel.y) <= radio + 40) this.danarGel(gel, dano);
     }
   }
 
@@ -688,8 +712,8 @@ export class Ronda extends Phaser.Scene {
     this.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
   }
 
-  destelloExplosion(x, y) {
-    const flash = this.add.circle(x, y, GRANADA.radio, 0xffd166, 0.45).setDepth(12);
+  destelloExplosion(x, y, radio = GRANADA.radio) {
+    const flash = this.add.circle(x, y, radio, 0xffd166, 0.45).setDepth(12);
     this.tweens.add({ targets: flash, alpha: 0, scale: 1.3, duration: 260, onComplete: () => flash.destroy() });
   }
 

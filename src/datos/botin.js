@@ -1,13 +1,14 @@
 // Qué sale en las cajas (plan, sección 1.4). El peso es la probabilidad: suman 100.
 export const BOTIN = [
-  { tipo: 'botiquin', peso: 20 },
-  { tipo: 'arma', arma: 'subfusil', peso: 15 },
-  { tipo: 'chaleco', peso: 15 },
+  { tipo: 'botiquin', peso: 18 },
+  { tipo: 'arma', arma: 'subfusil', peso: 14 },
+  { tipo: 'chaleco', peso: 14 },
   { tipo: 'arma', arma: 'escopeta', peso: 12 },
-  { tipo: 'arma', arma: 'rifle', peso: 12 },
+  { tipo: 'arma', arma: 'rifle', peso: 11 },
   { tipo: 'granada', peso: 10 },
   { tipo: 'gel', cantidad: 2, peso: 10 },
   { tipo: 'arma', arma: 'franco', peso: 6 },
+  { tipo: 'arma', arma: 'cohetes', peso: 5 },
 ];
 
 export const BOTIN_ESCOPETAS = [
@@ -16,9 +17,17 @@ export const BOTIN_ESCOPETAS = [
   { tipo: 'gel', cantidad: 2, peso: 25 },
 ];
 
+export const BOTIN_FRANCOS = [
+  { tipo: 'arma', arma: 'franco', peso: 45 },
+  { tipo: 'botiquin', peso: 25 },
+  { tipo: 'gel', cantidad: 2, peso: 20 },
+  { tipo: 'chaleco', peso: 10 },
+];
+
 export const BOTIN_AIRDROP = [
-  { tipo: 'arma', arma: 'dorado', peso: 50 },
-  { tipo: 'gel', cantidad: 2, peso: 50 },
+  { tipo: 'arma', arma: 'dorado', peso: 40 },
+  { tipo: 'arma', arma: 'cohetes', peso: 25 },
+  { tipo: 'gel', cantidad: 2, peso: 35 },
 ];
 
 // Elige un elemento de la tabla según su peso

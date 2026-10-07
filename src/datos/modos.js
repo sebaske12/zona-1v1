@@ -1,5 +1,5 @@
 // Modos de juego (plan, sección 1.6).
-import { BOTIN, BOTIN_ESCOPETAS } from './botin.js';
+import { BOTIN, BOTIN_ESCOPETAS, BOTIN_FRANCOS } from './botin.js';
 import { FASES_ZONA } from './zona.js';
 
 export const MODOS = {
@@ -12,6 +12,11 @@ export const MODOS = {
     nombre: 'Solo escopetas',
     texto: 'Las cajas traen escopeta, botiquín o gel. Pura pelea de cerca.',
     botin: BOTIN_ESCOPETAS, cajas: true, airdrop: true, fases: FASES_ZONA,
+  },
+  francos: {
+    nombre: 'Francotiradores',
+    texto: 'Las cajas traen francotirador, botiquín, gel o chaleco. Ojo con el láser.',
+    botin: BOTIN_FRANCOS, cajas: true, airdrop: true, fases: FASES_ZONA,
   },
   untiro: {
     nombre: 'Un tiro',
@@ -29,4 +34,4 @@ export const MODOS = {
   },
 };
 
-export const ORDEN_MODOS = ['clasico', 'escopetas', 'untiro', 'caos'];
+export const ORDEN_MODOS = ['clasico', 'escopetas', 'francos', 'untiro', 'caos'];

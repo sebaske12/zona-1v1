@@ -10,6 +10,7 @@ import { sortearOpciones } from '../datos/ventajas.js';
 import { resumenPartida } from '../sistemas/Partida.js';
 
 const ENVIOS_POR_SEGUNDO = 20;
+export const TIPOS_BALA = ['bala', 'perdigon', 'cohete'];
 
 export class RondaEnLinea extends Ronda {
   constructor() {
@@ -81,7 +82,7 @@ export class RondaEnLinea extends Ronda {
         j.curando ? +((this.reloj - j.curandoDesde) / BOTIQUIN.tiempo).toFixed(2) : -1,
         j.apuntandoHasta > 0 ? 1 : 0, j.fueraDeZona ? 1 : 0,
       ]),
-      b: this.balas.getChildren().filter((b) => b.active).map((b) => [r(b.x), r(b.y), r(b.body.velocity.x), r(b.body.velocity.y), b.texture.key === 'perdigon' ? 1 : 0]),
+      b: this.balas.getChildren().filter((b) => b.active).map((b) => [r(b.x), r(b.y), r(b.body.velocity.x), r(b.body.velocity.y), TIPOS_BALA.indexOf(b.texture.key)]),
       g: this.granadas.getChildren().map((g) => [r(g.x), r(g.y), r(g.body.velocity.x), r(g.body.velocity.y)]),
       ge: this.geles.getChildren().map((g) => [r(g.x), r(g.y), r(g.width), r(g.height), +Math.max(0, g.vidaGel / GEL.vida).toFixed(2)]),
       c: this.cajas.map((c) => [c.x, c.y, c.airdrop ? 1 : 0, c.abierta ? 1 : 0, +Math.max(...c.progreso.map((p) => p / c.tiempo)).toFixed(2)]),
@@ -118,9 +119,9 @@ export class RondaEnLinea extends Ronda {
     super.trazo(x1, y1, x2, y2);
   }
 
-  destelloExplosion(x, y) {
-    this.salientes.push({ e: 'boom', x: Math.round(x), y: Math.round(y) });
-    super.destelloExplosion(x, y);
+  destelloExplosion(x, y, radio) {
+    this.salientes.push({ e: 'boom', x: Math.round(x), y: Math.round(y), r: radio });
+    super.destelloExplosion(x, y, radio);
   }
 
   mensaje(contenido, color, dura) {

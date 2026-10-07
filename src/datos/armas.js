@@ -8,6 +8,8 @@ export const ARMAS = {
   rifle:    { nombre: 'Rifle',         dano: 14, porSegundo: 6,   cargador: 25, recarga: 1.8, alcance: 600,  abertura: 4,  balas: 1, velBala: 1000, sonido: 'rifle' },
   franco:   { nombre: 'Francotirador', dano: 75, porSegundo: 0.6, cargador: 3,  recarga: 2.5, alcance: 1500, abertura: 0,  balas: 1, rayo: true, apuntado: 0.4, velocidad: 190, sonido: 'franco', sacudida: 0.01 },
   dorado:   { nombre: 'Rifle dorado',  dano: 18, porSegundo: 6,   cargador: 40, recarga: 1.5, alcance: 600,  abertura: 4,  balas: 1, velBala: 1000, sonido: 'rifle' },
+  // El cohete no hace daño al tocar: explota (al chocar o al llegar a su alcance) y daña en un área
+  cohetes:  { nombre: 'Lanzacohetes',  dano: 0,  porSegundo: 0.5, cargador: 1,  recarga: 2.2, alcance: 700,  abertura: 0,  balas: 1, velBala: 520,  sonido: 'cohete', textura: 'cohete', explosivo: { dano: 55, radio: 90 }, velocidad: 200, sacudida: 0.004 },
 };
 
 // radio en píxeles · mecha en segundos · danoPropio: fracción del daño si te agarra a ti

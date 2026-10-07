@@ -6,6 +6,7 @@ import { Guardado, registroDePartida } from '../sistemas/Guardado.js';
 import { nuevaPartida } from '../sistemas/Partida.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { boton, texto, fondoMenu } from '../ui/ui.js';
+import { Musica } from '../sistemas/Musica.js';
 
 export class Victoria extends Phaser.Scene {
   constructor() {
@@ -17,6 +18,7 @@ export class Victoria extends Phaser.Scene {
   }
 
   create() {
+    Musica.poner('menu');
     this.input.keyboard.clearCaptures();
     const p = this.registry.get('partida');
     const g = p.ganador;

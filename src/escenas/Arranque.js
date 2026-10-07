@@ -2,6 +2,7 @@
 import Phaser from 'phaser';
 import { Guardado } from '../sistemas/Guardado.js';
 import { Sonido } from '../sistemas/Sonido.js';
+import { Musica } from '../sistemas/Musica.js';
 
 export class Arranque extends Phaser.Scene {
   constructor() {
@@ -9,7 +10,9 @@ export class Arranque extends Phaser.Scene {
   }
 
   create() {
-    Sonido.activo = Guardado.leer().ajustes.sonido;
+    const ajustes = Guardado.leer().ajustes;
+    Sonido.activo = ajustes.sonido;
+    Musica.activa = ajustes.musica;
     const g = this.make.graphics({ x: 0, y: 0 }, false);
     const tex = (clave, w, h, dibujo) => {
       g.clear();
@@ -36,6 +39,12 @@ export class Arranque extends Phaser.Scene {
     arma('arma-rifle', 36, 6, 0x4d5d48, (d) => d.fillStyle(0x161a24, 1).fillRect(15, 9, 5, 3));
     arma('arma-franco', 46, 5, 0x34406a, (d) => d.fillStyle(0x7ea0ff, 1).fillRect(16, 2, 9, 3));
     arma('arma-dorado', 36, 6, 0xf2c230, (d) => d.fillStyle(0xfff1a8, 1).fillRect(3, 5, 28, 1));
+    arma('arma-cohetes', 42, 9, 0x55603a, (d) => d.fillStyle(0xd8432f, 1).fillRect(36, 3, 5, 6).fillStyle(0x2b2f3a, 1).fillRect(12, 9, 5, 3));
+    tex('cohete', 18, 8, (d) => {
+      d.fillStyle(0xffb347, 1).fillTriangle(0, 4, 5, 1, 5, 7); // fuego
+      d.fillStyle(0xdfe3ea, 1).fillRect(5, 1, 9, 6);
+      d.fillStyle(0xd8432f, 1).fillTriangle(14, 1, 18, 4, 14, 7); // punta
+    });
 
     tex('bala', 12, 4, (d) => d.fillStyle(0xfff3b0, 1).fillRoundedRect(0, 0, 12, 4, 2));
     tex('perdigon', 6, 6, (d) => d.fillStyle(0xffe08a, 1).fillCircle(3, 3, 3));

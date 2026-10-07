@@ -4,11 +4,22 @@ import Phaser from 'phaser';
 import { COLORES_JUGADOR, UI } from '../config.js';
 import { VENTAJAS, MAX_VENTAJAS, sortearOpciones } from '../datos/ventajas.js';
 import { indiceDeControl } from '../entrada/entradas.js';
+import { teclasDe, nombreTecla } from '../entrada/Teclado.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { texto, fondoMenu } from '../ui/ui.js';
+import { Musica } from '../sistemas/Musica.js';
 
 const { JustDown } = Phaser.Input.Keyboard;
-const AYUDA = ['A / D para moverte · Espacio para elegir', '← / → para moverte · K para elegir'];
+
+// Las cartas se eligen con las teclas de cada uno: izquierda/derecha para moverse y disparar para elegir
+const teclasMenu = (i) => {
+  const t = teclasDe(i);
+  return { izq: t.izquierda, der: t.derecha, ok: t.disparar };
+};
+const ayuda = (i) => {
+  const t = teclasMenu(i);
+  return `${nombreTecla(t.izq)} / ${nombreTecla(t.der)} para moverte · ${nombreTecla(t.ok)} para elegir`;
+};
 
 export class Ventajas extends Phaser.Scene {
   constructor() {
@@ -23,6 +34,7 @@ export class Ventajas extends Phaser.Scene {
   }
 
   create() {
+    Musica.poner('menu');
     this.partida = this.registry.get('partida');
     this.terminado = false;
     this.botPensando = false; // Phaser reutiliza la escena: hay que limpiar lo de la vez anterior
@@ -39,10 +51,7 @@ export class Ventajas extends Phaser.Scene {
 
     this.lados = [0, 1].map((i) => this.crearLado(i));
     this.turno = this.lados[this.perdedor].listo ? 1 - this.perdedor : this.perdedor;
-    this.teclas = [
-      this.input.keyboard.addKeys({ izq: 'A', der: 'D', ok: 'SPACE' }),
-      this.input.keyboard.addKeys({ izq: 'LEFT', der: 'RIGHT', ok: 'K' }),
-    ];
+    this.teclas = [this.input.keyboard.addKeys(teclasMenu(0)), this.input.keyboard.addKeys(teclasMenu(1))];
     this.enter = this.input.keyboard.addKey('ENTER');
     this.padAntes = [{}, {}];
     this.refrescar();
@@ -106,7 +115,7 @@ export class Ventajas extends Phaser.Scene {
       });
       let estado;
       if (lado.listo) estado = lado.elegida !== null ? '¡Listo!' : 'Ya tienes el máximo de ventajas';
-      else if (this.turno === lado.i) estado = this.esLocal(lado.i) ? (this.remoto === null ? AYUDA[lado.i] : 'Toca una carta o usa A / D y Espacio') : 'Está eligiendo…';
+      else if (this.turno === lado.i) estado = this.esLocal(lado.i) ? (this.remoto === null ? ayuda(lado.i) : `Toca una carta o usa ${ayuda(0)}`) : 'Está eligiendo…';
       else estado = `Esperando a que ${nombreOtro} elija…`;
       lado.estado.setText(estado);
     }

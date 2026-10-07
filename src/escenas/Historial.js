@@ -6,6 +6,7 @@ import { MAPAS } from '../datos/mapas.js';
 import { MODOS } from '../datos/modos.js';
 import { Guardado, resumenRivalidad } from '../sistemas/Guardado.js';
 import { boton, texto, fondoMenu } from '../ui/ui.js';
+import { Musica } from '../sistemas/Musica.js';
 
 export class Historial extends Phaser.Scene {
   constructor() {
@@ -13,6 +14,7 @@ export class Historial extends Phaser.Scene {
   }
 
   create() {
+    Musica.poner('menu');
     this.input.keyboard.clearCaptures();
     fondoMenu(this);
     const d = Guardado.leer();

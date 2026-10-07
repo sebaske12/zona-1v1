@@ -7,14 +7,11 @@ import { Guardado } from '../sistemas/Guardado.js';
 import { nuevaPartida } from '../sistemas/Partida.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { boton, texto, fondoMenu, dibujarMiniMapa } from '../ui/ui.js';
+import { resumenTeclas } from '../entrada/Teclado.js';
+import { Musica } from '../sistemas/Musica.js';
 
 export const ESTILO_INPUT = 'width:300px;padding:8px 12px;font:600 20px "Chakra Petch",sans-serif;border-radius:8px;'
   + 'border:2px solid #2a3249;background:#0d111d;color:#e7eaf2;outline:none;text-align:center;';
-
-const CONTROLES = [
-  'W A S D · Espacio dispara · Shift rueda\nQ usa objeto · E cambia · 1 2 3 burlas',
-  'Flechas · K dispara · J rueda\nL usa objeto · I cambia · 8 9 0 burlas',
-];
 
 export class Preparacion extends Phaser.Scene {
   constructor() {
@@ -26,6 +23,7 @@ export class Preparacion extends Phaser.Scene {
   }
 
   create() {
+    Musica.poner('menu');
     this.input.keyboard.clearCaptures();
     this.saliendo = false;
     const datos = Guardado.leer();
@@ -87,7 +85,7 @@ export class Preparacion extends Phaser.Scene {
     col.apuesta.node.maxLength = 60;
     col.apuesta.node.placeholder = i === 0 ? 'ej.: lava los platos' : 'ej.: invita el helado';
 
-    texto(this, cx, 560, this.esBot(i) ? 'La computadora maneja este jugador.' : CONTROLES[i], 14, UI.suave, { align: 'center', lineSpacing: 4 }).setOrigin(0.5, 0);
+    texto(this, cx, 560, this.esBot(i) ? 'La computadora maneja este jugador.' : resumenTeclas(i), 14, UI.suave, { align: 'center', lineSpacing: 4 }).setOrigin(0.5, 0);
     if (this.esBot(i)) {
       col.nombre.node.disabled = true;
       col.apuesta.setVisible(false);

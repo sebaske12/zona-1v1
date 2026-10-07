@@ -7,6 +7,7 @@ import { Menu } from './escenas/Menu.js';
 import { Preparacion } from './escenas/Preparacion.js';
 import { Historial } from './escenas/Historial.js';
 import { Ajustes } from './escenas/Ajustes.js';
+import { Teclas } from './escenas/Teclas.js';
 import { Ronda } from './escenas/Ronda.js';
 import { HUD } from './escenas/HUD.js';
 import { Ventajas } from './escenas/Ventajas.js';
@@ -32,7 +33,7 @@ const config = {
     arcade: { debug: false },     // ponlo en true para ver las cajas de choque
   },
   // El orden importa: el HUD va después de las rondas para dibujarse encima
-  scene: [Arranque, Menu, Preparacion, Historial, Ajustes, Sala, Ronda, RondaEnLinea, RondaInvitado, HUD, Ventajas, Victoria],
+  scene: [Arranque, Menu, Preparacion, Historial, Ajustes, Teclas, Sala, Ronda, RondaEnLinea, RondaInvitado, HUD, Ventajas, Victoria],
 };
 
 // iOS y los navegadores solo dejan sonar después del primer toque o tecla

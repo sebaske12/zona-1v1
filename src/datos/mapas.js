@@ -56,4 +56,16 @@ export const MAPAS = {
   }),
 };
 
-export const ORDEN_MAPAS = ['bodega', 'pueblo', 'isla'];
+MAPAS.mercado = mapa({
+  nombre: 'Mercado',
+  texto: 'Puestos y pasillos estrechos. Bueno para la escopeta y el subfusil.',
+  muros: [
+    [160, 110, 70, 40], [330, 110, 70, 40], [500, 110, 70, 40],
+    [160, 290, 70, 40], [330, 250, 40, 90],
+    [250, 470, 120, 30], [470, 430, 30, 90], [80, 560, 30, 100],
+  ],
+  cajas: [[260, 200], [440, 200], [120, 400], [380, 560]],
+  inicio: [70, 140],
+});
+
+export const ORDEN_MAPAS = ['bodega', 'pueblo', 'isla', 'mercado'];

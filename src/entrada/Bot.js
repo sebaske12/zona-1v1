@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { ANCHO, ALTO, CENTRO } from '../config.js';
 
 const CELDA = 40; // el mapa se divide en cuadritos para buscar caminos
-const DISTANCIA_PREFERIDA = { pistola: 260, subfusil: 190, escopeta: 110, rifle: 320, dorado: 320, franco: 560 };
+const DISTANCIA_PREFERIDA = { pistola: 260, subfusil: 190, escopeta: 110, rifle: 320, dorado: 320, franco: 560, cohetes: 320 };
 const VECINOS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
 export class EntradaBot {
