@@ -22,6 +22,8 @@ const config = {
   width: ANCHO,                // el mapa mide exactamente una pantalla
   height: ALTO,
   backgroundColor: '#0d111d',
+  // Las caras (256 × 256) se ven suaves y nítidas aunque se dibujen pequeñas
+  render: { mipmapFilter: 'LINEAR_MIPMAP_LINEAR' },
   scale: {
     mode: Phaser.Scale.FIT,    // se ajusta a la ventana sin deformarse
     autoCenter: Phaser.Scale.CENTER_BOTH,

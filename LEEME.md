@@ -55,8 +55,15 @@ Después, cada uno abre el link `https://TU-USUARIO.github.io/zona-1v1/` y usa *
 - **Tu cara en el muñeco (cabina de fotos):** al empezar a jugar, a quien no tenga foto se le abre la cámara frontal
   en vivo con un estilo chistoso: 🤪 Cabezón, 👀 Ojos saltones, 🥸 Bigotón, 🤡 Payaso, 👽 Alien o 🙂 Normal.
   Pones la cara en el óvalo, tocas **📸 ¡Foto!** (cuenta 3, 2, 1 y flash) y listo. También se puede elegir de la
-  galería o tocar "Ahora no". Para cambiarla después: **📷 Tu cara**. En el juego la cabeza rebota, hace "boing"
-  cuando te pegan, le salen estrellitas cuando caes y salta cuando ganas la ronda.
+  galería o tocar "Ahora no". Para cambiarla después: **📷 Tu cara**. En el juego la cabeza es grande (se ve bien
+  la cara), rebota, hace "boing" cuando te pegan, le salen estrellitas cuando caes y salta cuando ganas la ronda.
+  La cara también sale en tu panel de arriba. Desde la versión 1.5 la foto tiene el doble de definición:
+  si te la tomaste antes, tómatela otra vez con **📷 Tu cara** para que se vea más nítida.
+- **En línea sin retraso (versión 1.5):** cada uno mueve, apunta, rueda y dispara en su propio aparato al instante,
+  sin esperar al otro. Si la red lo permite, los dos aparatos se conectan **directo** (casi sin retraso); si no,
+  por el servidor (funciona igual, solo que el rival se ve un poquito atrasado). Abajo al centro dice el ping
+  (📶) y si va "directo" o "por servidor". Si el camino directo se cae (por ejemplo, al pasar de WiFi a datos),
+  la partida sigue por el servidor y vuelve al directo sola.
 - **En el celular** la cámara sigue a tu jugador con zoom, y unas flechas en el borde señalan al rival, al airdrop y a la zona.
 - **Actualizaciones:** cuando se publica una versión nueva, el menú muestra "¡Hay una versión nueva!" para actualizar con un toque.
   La versión está abajo a la derecha del menú.
@@ -87,9 +94,10 @@ Cada vez que guardes cambios y hagas `git push`, se vuelve a publicar solo.
 - **El iPhone no abre la dirección:** los dos deben estar en el mismo WiFi que el PC y `Jugar.bat` abierto.
   Si cambió la dirección, mírala otra vez en la ventana negra.
 - **No suena en el iPhone:** quita el modo silencio (el interruptor del costado). Toca la pantalla una vez.
-- **En línea:** desde la versión 1.3 las salas pasan por un servidor propio en Cloudflare, así que funciona
-  con WiFi, con datos móviles y cada uno en su casa. Si no conecta, revisen que los dos tengan internet
-  y la misma versión (abajo a la derecha del menú).
+- **En línea:** las salas pasan por un servidor propio en Cloudflare, así que funciona con WiFi, con datos
+  móviles y cada uno en su casa. Si no conecta, revisen que los dos tengan internet y la misma versión
+  (abajo a la derecha del menú). Para el menor retraso, que estén en el mismo WiFi o con buena señal:
+  el 📶 debe decir "directo".
 - **Con un solo teclado no responden las teclas de los dos:** algunos teclados no aguantan muchas teclas a la vez.
   Conecta un control USB o Bluetooth para uno de los dos.
 
@@ -100,7 +108,8 @@ Cada vez que guardes cambios y hagas `git push`, se vuelve a publicar solo.
 - `src/escenas/`: las pantallas (menú, preparación, ronda, HUD, ventajas, victoria, historial, sala en línea…).
 - `src/objetos/Jugador.js`: el personaje.
 - `src/entrada/`: teclado, control, ratón, pantalla táctil, red y bot. Todos producen la misma "intención".
-- `src/red/`: la conexión en línea. `RedNube.js` usa el servidor de salas; `Red.js` es la conexión directa (PeerJS) de respaldo.
+- `src/red/`: la conexión en línea. `RedNube.js` usa el servidor de salas y además intenta el camino directo
+  (WebRTC); `Interpolacion.js` suaviza lo que llega por la red; `Red.js` es la conexión por PeerJS de respaldo.
 - `servidor/`: el servidor de salas (Cloudflare Workers, plan gratis). Para publicarlo de nuevo:
   `cd servidor` y `npx wrangler deploy`. Su dirección está en `src/red/servidor.js`.
 - `src/sistemas/`: sonidos (generados con código), guardado e historial.

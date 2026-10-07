@@ -1,11 +1,12 @@
 // Cabina de fotos: la cámara frontal en vivo con un estilo chistoso (cabezón, ojos saltones,
 // bigotón, payaso, alien…), cuenta regresiva y flash. También se puede elegir una foto de la galería.
-// El resultado es una cara redonda de caricatura de 96 × 96 que se guarda en el perfil.
+// El resultado es una cara redonda de caricatura de 256 × 256 que se guarda en el perfil.
 import { Sonido } from '../sistemas/Sonido.js';
 
-const TAM_CARA = 96; // así se guarda
-const T = 160; // así se procesa (más grande = más detalle)
-const D = 340; // tamaño interno de la vista
+const TAM_CARA = 256; // así se guarda (JPG: pesa poco y se ve nítida en el juego)
+const T_FINAL = 512; // así se procesa la foto ya tomada (más grande = más detalle)
+const T_VIVO_MAX = 400; // así se procesa la cámara en vivo (baja solo si el celular va lento)
+const T_VIVO_MIN = 224;
 
 export const ESTILOS = [
   { id: 'cabezon', nombre: '🤪 Cabezón' },
@@ -30,7 +31,7 @@ function ponerEstilos() {
     justify-content: center; gap: 12px 28px; padding: 12px; box-sizing: border-box; touch-action: none;
     -webkit-user-select: none; user-select: none; overflow: auto; }
   #cabina [hidden] { display: none !important; }
-  #cabina .marco { position: relative; width: min(80vh, 82vw, 340px); height: min(80vh, 82vw, 340px); }
+  #cabina .marco { position: relative; width: min(80vh, 84vw, 440px); height: min(80vh, 84vw, 440px); flex: none; }
   #cabina canvas.vista { width: 100%; height: 100%; border-radius: 50%; border: 5px solid #f2b544;
     box-sizing: border-box; touch-action: none; background: #1a2135; }
   #cabina .cuenta { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -55,33 +56,30 @@ function ponerEstilos() {
 // ---------- Efectos ----------
 
 // Agranda o encoge zonas de la cara (como un espejo de feria)
-function deformar(ctx, zonas) {
-  const fuente = ctx.getImageData(0, 0, T, T);
-  const a = fuente.data;
+function deformar(ctx, zonas, T) {
+  const a = ctx.getImageData(0, 0, T, T).data;
   const salida = ctx.createImageData(T, T);
   const b = salida.data;
+  const zs = zonas.map((z) => ({ cx: z.x * T, cy: z.y * T, R: z.r * T, R2: (z.r * T) ** 2, e: z.p - 1 }));
   for (let y = 0; y < T; y++) {
     for (let x = 0; x < T; x++) {
       let sx = x + 0.5;
       let sy = y + 0.5;
-      for (const z of zonas) {
-        const cx = z.x * T;
-        const cy = z.y * T;
-        const R = z.r * T;
-        const dx = sx - cx;
-        const dy = sy - cy;
-        const d = Math.hypot(dx, dy);
-        if (d > 0 && d < R) {
-          const k = Math.pow(d / R, z.p - 1); // p > 1: agranda el centro de la zona
-          sx = cx + dx * k;
-          sy = cy + dy * k;
+      for (const z of zs) {
+        const dx = sx - z.cx;
+        const dy = sy - z.cy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > 0 && d2 < z.R2) {
+          const k = Math.pow(Math.sqrt(d2) / z.R, z.e); // p > 1: agranda el centro de la zona
+          sx = z.cx + dx * k;
+          sy = z.cy + dy * k;
         }
       }
       // Muestreo bilineal (más suave)
       const fx = limitar(sx - 0.5, 0, T - 1.001);
       const fy = limitar(sy - 0.5, 0, T - 1.001);
-      const x0 = Math.floor(fx);
-      const y0 = Math.floor(fy);
+      const x0 = fx | 0;
+      const y0 = fy | 0;
       const tx = fx - x0;
       const ty = fy - y0;
       const i00 = (y0 * T + x0) * 4;
@@ -90,55 +88,80 @@ function deformar(ctx, zonas) {
       const i11 = i01 + 4;
       const o = (y * T + x) * 4;
       for (let c = 0; c < 4; c++) {
-        const arriba = a[i00 + c] * (1 - tx) + a[i10 + c] * tx;
-        const abajo = a[i01 + c] * (1 - tx) + a[i11 + c] * tx;
-        b[o + c] = arriba * (1 - ty) + abajo * ty;
+        const arriba = a[i00 + c] + (a[i10 + c] - a[i00 + c]) * tx;
+        const abajo = a[i01 + c] + (a[i11 + c] - a[i01 + c]) * tx;
+        b[o + c] = arriba + (abajo - arriba) * ty;
       }
     }
   }
   ctx.putImageData(salida, 0, 0);
 }
 
-// Filtro de caricatura: más color y contraste, pocos tonos y bordes oscuros de cómic
-export function caricatura(ctx, tam = T, tinte = null) {
-  const datos = ctx.getImageData(0, 0, tam, tam);
+// Promedio en un cuadrito de radio r (en dos pasadas, rápido aunque la imagen sea grande)
+function desenfocar(fuente, T, r) {
+  const tmp = new Float32Array(T * T);
+  const sal = new Float32Array(T * T);
+  const n = 2 * r + 1;
+  for (let y = 0; y < T; y++) {
+    let suma = 0;
+    const fila = y * T;
+    for (let x = -r; x <= r; x++) suma += fuente[fila + limitar(x, 0, T - 1)];
+    for (let x = 0; x < T; x++) {
+      tmp[fila + x] = suma / n;
+      suma += fuente[fila + Math.min(T - 1, x + r + 1)] - fuente[fila + Math.max(0, x - r)];
+    }
+  }
+  for (let x = 0; x < T; x++) {
+    let suma = 0;
+    for (let y = -r; y <= r; y++) suma += tmp[limitar(y, 0, T - 1) * T + x];
+    for (let y = 0; y < T; y++) {
+      sal[y * T + x] = suma / n;
+      suma += tmp[Math.min(T - 1, y + r + 1) * T + x] - tmp[Math.max(0, y - r) * T + x];
+    }
+  }
+  return sal;
+}
+
+// Filtro de caricatura: más color y contraste, menos tonos y bordes oscuros de cómic.
+// Los bordes se calculan a la escala de la imagen, así se ve igual en grande que en chiquito.
+function caricatura(ctx, T, estilo) {
+  const datos = ctx.getImageData(0, 0, T, T);
   const p = datos.data;
-  const luz = new Float32Array(tam * tam);
-  const paso = 255 / 5; // 6 tonos por color
+  const luz = new Float32Array(T * T);
+  const suave = estilo === 'normal';
+  const paso = 255 / (suave ? 11 : 7);
+  const fuerza = suave ? 1.15 : 1.4;
   for (let i = 0, k = 0; i < p.length; i += 4, k++) {
     let r = p[i];
     let g = p[i + 1];
     let b = p[i + 2];
-    if (tinte === 'alien') {
+    if (estilo === 'alien') {
       r *= 0.55;
       g = g * 1.05 + 28;
       b *= 0.6;
     }
     const l = 0.299 * r + 0.587 * g + 0.114 * b;
     luz[k] = l;
-    const tono = (c) => limitar(Math.round((((l + (c - l) * 1.4) - 128) * 1.12 + 136) / paso) * paso, 0, 255);
+    const tono = (c) => limitar(Math.round((((l + (c - l) * fuerza) - 128) * 1.1 + 134) / paso) * paso, 0, 255);
     p[i] = tono(r);
     p[i + 1] = tono(g);
     p[i + 2] = tono(b);
   }
-  const s = new Float32Array(tam * tam);
-  for (let y = 1; y < tam - 1; y++) {
-    for (let x = 1; x < tam - 1; x++) {
-      let suma = 0;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) suma += luz[(y + dy) * tam + x + dx];
-      s[y * tam + x] = suma / 9;
-    }
-  }
-  for (let y = 2; y < tam - 2; y++) {
-    for (let x = 2; x < tam - 2; x++) {
-      const k = y * tam + x;
+  const rb = Math.max(1, Math.round(T / 170));
+  const s = desenfocar(luz, T, rb);
+  const umbral = suave ? 90 : 60;
+  for (let y = rb + 1; y < T - rb - 1; y++) {
+    for (let x = rb + 1; x < T - rb - 1; x++) {
+      const k = y * T + x;
       const i = k * 4;
       if (p[i + 3] < 200) continue;
-      const gx = -s[k - tam - 1] - 2 * s[k - 1] - s[k + tam - 1] + s[k - tam + 1] + 2 * s[k + 1] + s[k + tam + 1];
-      const gy = -s[k - tam - 1] - 2 * s[k - tam] - s[k - tam + 1] + s[k + tam - 1] + 2 * s[k + tam] + s[k + tam + 1];
+      const arriba = k - rb * T;
+      const abajo = k + rb * T;
+      const gx = -s[arriba - rb] - 2 * s[k - rb] - s[abajo - rb] + s[arriba + rb] + 2 * s[k + rb] + s[abajo + rb];
+      const gy = -s[arriba - rb] - 2 * s[arriba] - s[arriba + rb] + s[abajo - rb] + 2 * s[abajo] + s[abajo + rb];
       const m = Math.hypot(gx, gy);
-      if (m > 60) {
-        const f = Math.max(0.12, 1 - (m - 60) / 110);
+      if (m > umbral) {
+        const f = Math.max(0.12, 1 - (m - umbral) / 110);
         p[i] *= f;
         p[i + 1] *= f;
         p[i + 2] *= f;
@@ -164,7 +187,7 @@ function circulo(ctx, x, y, r, color) {
 }
 
 // Adornos dibujados encima (la guía ovalada hace que caigan en su lugar)
-function adornos(ctx, estilo) {
+function adornos(ctx, estilo, T) {
   const u = T / 100;
   ctx.save();
   ctx.beginPath();
@@ -204,12 +227,12 @@ function adornos(ctx, estilo) {
   ctx.restore();
 }
 
-function aplicarEstilo(ctx, estilo) {
-  if (estilo === 'cabezon') deformar(ctx, [{ x: 0.5, y: 0.56, r: 0.46, p: 1.55 }]);
-  if (estilo === 'ojos' || estilo === 'alien') deformar(ctx, [{ x: 0.36, y: 0.43, r: 0.17, p: 1.9 }, { x: 0.64, y: 0.43, r: 0.17, p: 1.9 }]);
-  if (estilo === 'payaso') deformar(ctx, [{ x: 0.5, y: 0.57, r: 0.2, p: 1.4 }]);
-  caricatura(ctx, T, estilo === 'alien' ? 'alien' : null);
-  adornos(ctx, estilo);
+function aplicarEstilo(ctx, estilo, T) {
+  if (estilo === 'cabezon') deformar(ctx, [{ x: 0.5, y: 0.56, r: 0.46, p: 1.55 }], T);
+  if (estilo === 'ojos' || estilo === 'alien') deformar(ctx, [{ x: 0.36, y: 0.43, r: 0.17, p: 1.9 }, { x: 0.64, y: 0.43, r: 0.17, p: 1.9 }], T);
+  if (estilo === 'payaso') deformar(ctx, [{ x: 0.5, y: 0.57, r: 0.2, p: 1.4 }], T);
+  caricatura(ctx, T, estilo);
+  adornos(ctx, estilo, T);
   contorno(ctx, T);
 }
 
@@ -222,7 +245,7 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
   raiz.id = 'cabina';
   raiz.innerHTML = `
     <div class="marco">
-      <canvas class="vista" width="${D}" height="${D}"></canvas>
+      <canvas class="vista"></canvas>
       <div class="cuenta"></div>
       <div class="flash"></div>
     </div>
@@ -244,11 +267,14 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
   document.body.appendChild(raiz);
   raiz.querySelector('.titulo').textContent = titulo;
 
+  // La vista usa los píxeles reales de la pantalla (en el iPhone son 3 por punto): así se ve nítida
   const vista = raiz.querySelector('canvas.vista');
+  const lado = raiz.querySelector('.marco').getBoundingClientRect().width || 340;
+  const D = Math.round(limitar(lado * Math.min(window.devicePixelRatio || 1, 3), 340, 1100));
+  vista.width = D;
+  vista.height = D;
   const v = vista.getContext('2d');
   const trabajo = document.createElement('canvas');
-  trabajo.width = T;
-  trabajo.height = T;
   const t = trabajo.getContext('2d', { willReadFrequently: true });
   const ayuda = raiz.querySelector('.ayuda');
   const cuenta = raiz.querySelector('.cuenta');
@@ -270,9 +296,22 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
   let cerrado = false;
   let sucio = true;
   let contando = false;
+  let tVivo = T_VIVO_MAX;
+  let moviendo = false; // arrastrando o acercando: se dibuja rápido y al soltar, con todo el detalle
+  let finMovimiento = 0;
 
   const marcarEstilo = () => {
     raiz.querySelectorAll('.estilos button').forEach((b) => b.classList.toggle('activo', b.dataset.estilo === estilo));
+    sucio = true;
+  };
+
+  const tocando = () => {
+    moviendo = true;
+    clearTimeout(finMovimiento);
+    finMovimiento = setTimeout(() => {
+      moviendo = false;
+      sucio = true;
+    }, 220);
     sucio = true;
   };
 
@@ -287,12 +326,18 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
     oy = limitar(oy, -Math.max(0, (fuente.h * s - D) / 2), Math.max(0, (fuente.h * s - D) / 2));
   };
 
-  const dibujarFuente = () => {
+  const dibujarFuente = (T) => {
+    if (trabajo.width !== T) {
+      trabajo.width = T;
+      trabajo.height = T;
+    }
     t.clearRect(0, 0, T, T);
     if (!fuente) return false;
     const k = T / D;
     const s = (T / Math.min(fuente.w, fuente.h)) * zoom;
     t.save();
+    t.imageSmoothingEnabled = true;
+    t.imageSmoothingQuality = 'high';
     t.beginPath();
     t.arc(T / 2, T / 2, T / 2, 0, Math.PI * 2);
     t.clip();
@@ -306,9 +351,10 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
   };
 
   const guia = () => {
+    const u = D / 340;
     v.save();
-    v.setLineDash([12, 9]);
-    v.lineWidth = 3;
+    v.setLineDash([12 * u, 9 * u]);
+    v.lineWidth = 3 * u;
     v.strokeStyle = 'rgba(255,255,255,.75)';
     v.beginPath();
     v.ellipse(D / 2, D * 0.52, D * 0.3, D * 0.38, 0, 0, Math.PI * 2);
@@ -317,24 +363,36 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
     v.fillStyle = 'rgba(255,255,255,.6)';
     for (const x of [0.36, 0.64]) {
       v.beginPath();
-      v.arc(D * x, D * 0.43, 5, 0, Math.PI * 2);
+      v.arc(D * x, D * 0.43, 5 * u, 0, Math.PI * 2);
       v.fill();
     }
     v.restore();
   };
 
+  // Tamaño de trabajo: en vivo, lo que aguante el aparato; con la foto quieta, el máximo
+  const tamanoActual = () => (modo === 'quieta' && !moviendo ? T_FINAL : tVivo);
+
   const pintar = () => {
+    const T = tamanoActual();
     v.clearRect(0, 0, D, D);
-    if (!dibujarFuente()) {
+    if (!dibujarFuente(T)) {
       if (modo === 'vivo') guia();
       return;
     }
-    aplicarEstilo(t, estilo);
+    const inicio = performance.now();
+    aplicarEstilo(t, estilo, T);
+    // Si el celular se demora, la vista en vivo baja un poco el detalle para no trabarse
+    if (modo === 'vivo') {
+      const ms = performance.now() - inicio;
+      if (ms > 30 && tVivo > T_VIVO_MIN) tVivo = Math.max(T_VIVO_MIN, tVivo - 32);
+      else if (ms < 12 && tVivo < T_VIVO_MAX) tVivo = Math.min(T_VIVO_MAX, tVivo + 16);
+    }
     v.save();
     v.beginPath();
     v.arc(D / 2, D / 2, D / 2, 0, Math.PI * 2);
     v.clip();
     v.imageSmoothingEnabled = true;
+    v.imageSmoothingQuality = 'high';
     v.drawImage(trabajo, 0, 0, D, D);
     v.restore();
     if (modo === 'vivo') guia();
@@ -362,7 +420,11 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('este navegador no tiene cámara');
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } }, audio: false });
+        // La mejor calidad que dé la cámara de adelante
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+          audio: false,
+        });
       } catch (e) {
         if (e?.name === 'NotAllowedError') throw e;
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); // cualquier cámara que haya
@@ -395,6 +457,7 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
 
   const mostrarListo = (texto) => {
     modo = 'quieta';
+    moviendo = false;
     raiz.querySelector('.vivo').hidden = true;
     raiz.querySelector('.listo').hidden = false;
     ayuda.textContent = texto;
@@ -416,7 +479,7 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
         return;
       }
       cuenta.textContent = '';
-      // Se congela la imagen (ya volteada como espejo)
+      // Se congela la imagen a resolución completa (ya volteada como espejo)
       const w = video.videoWidth;
       const h = video.videoHeight;
       const congelada = document.createElement('canvas');
@@ -477,7 +540,7 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
   barra.addEventListener('input', () => {
     zoom = Number(barra.value);
     ajustar();
-    sucio = true;
+    tocando();
   });
 
   // Arrastrar y pellizcar (con la foto ya tomada o de la galería)
@@ -503,7 +566,7 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
       barra.value = String(zoom);
     }
     ajustar();
-    sucio = true;
+    tocando();
   });
   const soltar = (e) => dedos.delete(e.pointerId);
   vista.addEventListener('pointerup', soltar);
@@ -513,12 +576,13 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
     zoom = limitar(zoom * (e.deltaY < 0 ? 1.08 : 0.93), 1, 3);
     barra.value = String(zoom);
     ajustar();
-    sucio = true;
+    tocando();
   }, { passive: false });
 
   const cerrar = (datos) => {
     if (cerrado) return;
     cerrado = true;
+    clearTimeout(finMovimiento);
     apagarCamara();
     window.removeEventListener('keydown', teclas, true);
     raiz.remove();
@@ -538,16 +602,20 @@ export function abrirCabina({ titulo = '¡Hora de la foto!', alTerminar }) {
     encenderCamara();
   });
   raiz.querySelector('.usar').addEventListener('click', () => {
+    // La versión final, con todo el detalle
+    moviendo = false;
     pintar();
     const c = document.createElement('canvas');
     c.width = TAM_CARA;
     c.height = TAM_CARA;
     const ctx = c.getContext('2d');
+    ctx.fillStyle = '#0d111d'; // las esquinas (el juego la recorta en círculo)
+    ctx.fillRect(0, 0, TAM_CARA, TAM_CARA);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(trabajo, 0, 0, TAM_CARA, TAM_CARA);
     Sonido.tocar('recoger');
-    cerrar(c.toDataURL('image/png'));
+    cerrar(c.toDataURL('image/jpeg', 0.9));
   });
   raiz.querySelector('.saltar').addEventListener('click', () => cerrar(null));
 

@@ -7,6 +7,7 @@ import { ARMAS, CHALECO } from '../datos/armas.js';
 import { duracionRonda } from '../datos/zona.js';
 import { esTactil } from '../entrada/entradas.js';
 import { resumenTeclas } from '../entrada/Teclado.js';
+import { conCara } from '../sistemas/Caras.js';
 
 const estilo = (tam, color = '#e7eaf2') => ({ fontFamily: FUENTE, fontSize: `${Math.round(tam)}px`, color, fontStyle: 'bold' });
 const css = (color) => `#${color.toString(16).padStart(6, '0')}`;
@@ -39,6 +40,27 @@ export class HUD extends Phaser.Scene {
     this.paneles = r.jugadores.map((j, i) => this.crearPanel(j, i));
     this.etiquetasFlechas = [0, 1, 2].map(() => this.add.text(0, 0, '', estilo(14 * f)).setOrigin(0.5).setStroke('#0d111d', 4).setVisible(false));
     this.crearAyudas();
+    // En línea: el ping y por dónde va la conexión, abajo al centro
+    this.red = this.claveRonda !== 'Ronda' ? this.registry.get('red') : null;
+    this.senal = this.add.text(640, 714, '', estilo(13 * f, '#9ba4ba')).setOrigin(0.5, 1).setStroke('#0d111d', 4);
+    this.proximaSenal = 0;
+  }
+
+  // 📶 45 ms · directo: verde si va rápido, amarillo si va regular, rojo si va lento
+  actualizarSenal() {
+    const red = this.red;
+    if (!red) return;
+    const ahora = this.game.loop.time;
+    if (ahora < this.proximaSenal) return;
+    this.proximaSenal = ahora + 500;
+    const ms = red.ping;
+    const via = red.via === 'directa' ? 'directo' : 'por servidor';
+    if (!ms) {
+      this.senal.setText(`📶 midiendo… · ${via}`).setColor('#9ba4ba');
+      return;
+    }
+    const color = ms < 120 ? '#3fd07f' : ms < 300 ? '#f2b544' : '#ff7468';
+    this.senal.setText(`📶 ${ms} ms · ${via}`).setColor(color);
   }
 
   // Recordatorio de controles al empezar la ronda
@@ -58,23 +80,38 @@ export class HUD extends Phaser.Scene {
       if (r.partida.bot && i === 1) return;
       if (enLinea && i !== r.indiceLocal) return;
       const teclas = resumenTeclas(enLinea ? 0 : i) + (enLinea ? '\nRatón: apunta · Clic: dispara' : '');
-      this.ayudas.push(ayuda(panel.x + this.tamPanel.ancho / 2, 640, teclas));
+      this.ayudas.push(ayuda(panel.x + panel.ancho / 2, 640, teclas));
     });
   }
 
   crearPanel(j, i) {
     const f = this.f;
-    const { ancho } = this.tamPanel;
+    // Con foto, la cara va a la izquierda del panel
+    const perfil = this.ronda.partida.perfiles[j.indice];
+    const extra = perfil?.cara ? Math.round(52 * f) : 0;
+    const ancho = this.tamPanel.ancho + extra;
     const x = i === 0 ? 12 : 1280 - 12 - ancho;
     const y = 10;
-    const nombre = this.add.text(x + 14 * f, y + 8 * f, j.nombre, estilo(16 * f, j.colorCss));
+    const izq = x + extra; // donde empieza lo demás
+    let cara = null;
+    if (extra) {
+      const cx = x + 6 + 24 * f;
+      const cy = y + this.tamPanel.alto / 2;
+      const anillo = this.add.circle(cx, cy, 24 * f, j.color);
+      const img = this.add.image(cx, cy, 'cuerpo').setVisible(false);
+      conCara(this, perfil.cara, (clave) => {
+        if (img.active) img.setTexture(clave).setDisplaySize(44 * f, 44 * f).setVisible(true);
+      });
+      cara = { anillo, img, gris: false };
+    }
+    const nombre = this.add.text(izq + 14 * f, y + 8 * f, j.nombre, estilo(16 * f, j.colorCss));
     const arma = this.add.text(x + ancho - 12 * f, y + 10 * f, '', estilo(13 * f)).setOrigin(1, 0);
     const iconos = ['botiquin', 'granada', 'gel'].map((tipo, k) => ({
       tipo,
-      img: this.add.image(x + (26 + k * 54) * f, y + 68 * f, `ico-${tipo}`).setScale(0.75 * f),
-      n: this.add.text(x + (40 + k * 54) * f, y + 60 * f, '0', estilo(14 * f)),
+      img: this.add.image(izq + (26 + k * 54) * f, y + 68 * f, `ico-${tipo}`).setScale(0.75 * f),
+      n: this.add.text(izq + (40 + k * 54) * f, y + 60 * f, '0', estilo(14 * f)),
     }));
-    return { x, y, j, nombre, arma, iconos };
+    return { x, y, ancho, izq, j, nombre, arma, iconos, cara };
   }
 
   // Posición en pantalla de algo del mapa (la cámara puede estar con zoom o moviéndose)
@@ -102,6 +139,7 @@ export class HUD extends Phaser.Scene {
     this.avisoPocaVida(g);
     for (const panel of this.paneles) this.dibujarPanel(panel, g);
     this.dibujarFlechas();
+    this.actualizarSenal();
 
     // La ayuda de controles se ve en la cuenta regresiva y se apaga a los 5 segundos
     const alfaAyuda = r.estado === 'cuenta' ? 1 : Phaser.Math.Clamp(5 - r.reloj, 0, 1);
@@ -157,13 +195,18 @@ export class HUD extends Phaser.Scene {
     const f = this.f;
     const margen = 52 * f;
     const arriba = this.tamPanel.alto + 46; // las flechas no se meten debajo de los paneles de arriba
+    const abajo = this.tactil ? 430 : 720 - margen; // ni encima de los joysticks y botones del celular
     objetivos.forEach((o, k) => {
       if (cam.worldView.contains(o.x, o.y)) return;
       const s = this.aPantalla(o.x, o.y);
       const a = Math.atan2(s.y - 360, s.x - 640);
-      const t = Math.min((640 - margen) / Math.max(1e-6, Math.abs(Math.cos(a))), (360 - margen) / Math.max(1e-6, Math.abs(Math.sin(a))));
+      const seno = Math.sin(a);
+      const t = Math.min(
+        (640 - margen) / Math.max(1e-6, Math.abs(Math.cos(a))),
+        seno > 0 ? (abajo - 360) / Math.max(1e-6, seno) : (360 - arriba) / Math.max(1e-6, -seno),
+      );
       const px = 640 + Math.cos(a) * t;
-      const py = Math.max(arriba, 360 + Math.sin(a) * t);
+      const py = 360 + seno * t;
       const tam = 17 * f;
       g.fillStyle(0x0d111d, 0.7).fillCircle(px, py, tam + 4);
       g.fillStyle(o.color, 0.95).fillTriangle(
@@ -177,9 +220,9 @@ export class HUD extends Phaser.Scene {
   }
 
   dibujarPanel(panel, g) {
-    const { x, y, j } = panel;
+    const { x, y, j, ancho, izq } = panel;
     const f = this.f;
-    const { ancho, alto } = this.tamPanel;
+    const { alto } = this.tamPanel;
     const alerta = j.fueraDeZona && Math.floor(this.game.loop.time / 200) % 2 === 0;
     // Si alguien pasa por debajo del panel, el panel se vuelve casi transparente
     const tapa = this.ronda.jugadores.some((o) => {
@@ -189,12 +232,22 @@ export class HUD extends Phaser.Scene {
     const alfa = tapa ? 0.35 : 1;
     panel.nombre.setAlpha(alfa);
     panel.arma.setAlpha(alfa);
+    if (panel.cara) {
+      panel.cara.anillo.setAlpha(alfa);
+      panel.cara.img.setAlpha(alfa);
+      // Si cayó, la cara se pone gris
+      if (!j.vivo && !panel.cara.gris) {
+        panel.cara.gris = true;
+        panel.cara.img.setTint(0x777777);
+        panel.cara.anillo.setFillStyle(0x555b6e);
+      }
+    }
     g.fillStyle(0x0d111d, 0.8 * alfa).fillRoundedRect(x, y, ancho, alto, 10);
     g.lineStyle(2, alerta ? 0xff5a4e : UI.borde, alfa).strokeRoundedRect(x, y, ancho, alto, 10);
-    g.fillStyle(j.color, alfa).fillRect(x + 4, y + 12, 3, alto - 24);
+    if (!panel.cara) g.fillStyle(j.color, alfa).fillRect(x + 4, y + 12, 3, alto - 24);
 
-    const bx = x + 14 * f;
-    const bw = ancho - 28 * f;
+    const bx = izq + 14 * f;
+    const bw = x + ancho - bx - 14 * f;
     const pv = Phaser.Math.Clamp(j.vida / j.vidaMax, 0, 1);
     g.fillStyle(0x222a3f, alfa).fillRect(bx, y + 33 * f, bw, 12 * f);
     g.fillStyle(colorVida(pv), alfa).fillRect(bx, y + 33 * f, bw * pv, 12 * f);

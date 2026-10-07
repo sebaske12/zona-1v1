@@ -34,7 +34,7 @@ export class Sala extends Phaser.Scene {
 
     fondoMenu(this);
     texto(this, 640, 40, 'Jugar en línea', 38, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
-    texto(this, 640, 82, 'Cada uno en su celular o PC. Funciona mejor si están conectados al mismo WiFi.', 17, UI.suave).setOrigin(0.5);
+    texto(this, 640, 82, 'Cada uno en su celular o PC, con WiFi o con datos. Si la red lo permite, se conectan directo y va más rápido.', 17, UI.suave).setOrigin(0.5);
 
     // Tu perfil
     const px = 320;

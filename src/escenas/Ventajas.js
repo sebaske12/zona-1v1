@@ -41,10 +41,6 @@ export class Ventajas extends Phaser.Scene {
     const p = this.partida;
     this.sorteo = this.opcionesDadas || sortearOpciones(p);
     this.red = this.remoto !== null ? this.registry.get('red') : null;
-    if (this.red) {
-      this.red.manejador = (t, d) => { if (t === 'elegida') this.elegir(d.i, null, d.id); };
-      this.events.once('shutdown', () => { if (this.red) this.red.manejador = null; });
-    }
     fondoMenu(this);
     texto(this, 640, 40, `Marcador ${p.rondas[0]} – ${p.rondas[1]}`, 40, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
     texto(this, 640, 86, `${p.perfiles[this.perdedor].nombre} perdió la ronda y elige primero. Las ventajas duran toda la partida.`, 18, UI.suave).setOrigin(0.5);
@@ -55,6 +51,12 @@ export class Ventajas extends Phaser.Scene {
     this.enter = this.input.keyboard.addKey('ENTER');
     this.padAntes = [{}, {}];
     this.refrescar();
+    // Se escucha a la red cuando las cartas ya existen: si tu pareja eligió mientras esta pantalla
+    // se abría, su elección estaba esperando en fila y se aplica aquí (antes eso trababa al invitado)
+    if (this.red) {
+      this.red.manejador = (t, d) => { if (t === 'elegida' && d) this.elegir(d.i, null, d.id); };
+      this.events.once('shutdown', () => { if (this.red) this.red.manejador = null; });
+    }
     if (this.lados.every((l) => l.listo)) this.terminar();
     this.cameras.main.fadeIn(200, 13, 17, 29);
   }

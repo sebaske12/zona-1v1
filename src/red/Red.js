@@ -5,6 +5,8 @@ import Peer from 'peerjs';
 const PREFIJO = 'zona1v1-sala-';
 const LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin O, 0, I ni 1 para que no se confundan
 const TAM_TROZO = 7000; // caracteres por trozo (con tildes ocupa más bytes; así nunca pasa de 16 KB)
+// Mensajes que solo sirven en el momento: si no hay escena que los reciba, se botan
+const SOLO_EN_VIVO = new Set(['estado', 'entrada', 'ev', 'accion']);
 
 export function sortearCodigo() {
   return Array.from({ length: 4 }, () => LETRAS[Math.floor(Math.random() * LETRAS.length)]).join('');
@@ -33,6 +35,13 @@ export class Red {
     this.pendientes = [];
     this.trozos = {};
     this.cerrando = false;
+    this.rtt = 0; // ms de ida y vuelta (ping), medido cada medio segundo
+    this.via = 'directa'; // 'directa' (de aparato a aparato) o 'nube' (por el servidor de salas)
+  }
+
+  // Ping (ms) y por dónde van los mensajes, para mostrarlo en pantalla
+  get ping() {
+    return Math.round(this.rtt);
   }
 
   // La escena activa recibe los mensajes. Si no hay ninguna, los importantes esperan en fila.
@@ -95,7 +104,7 @@ export class Red {
 
   preparar(conn) {
     this.conn = conn;
-    conn.on('data', (m) => this.recibir(m));
+    conn.on('data', (m) => this.entregar(m));
     conn.on('close', () => this.perdida());
     // Un error suelto (por ejemplo, un mensaje rechazado) no corta la partida: de eso se encarga el latido
     conn.on('error', (e) => console.warn('Zona 1v1 · error de conexión:', e?.type || e));
@@ -106,20 +115,35 @@ export class Red {
     return !!(this.conn && this.conn.open);
   }
 
-  // Latido: si en 8 s no llega nada del otro aparato, se da por perdida la conexión
-  // (cuando alguien cierra el navegador o se queda sin señal, puede tardar mucho en avisar)
+  // Latido con ping cada medio segundo: mide el retraso y, si en 8 s no llega nada del otro aparato,
+  // se da por perdida la conexión (cuando alguien cierra el navegador o se queda sin señal, puede tardar mucho en avisar)
   iniciarLatido() {
     this.ultimoMensaje = performance.now();
     clearInterval(this.latido);
-    this.latido = setInterval(() => {
-      if (this.cerrando) return;
-      if (this.conectada()) this.enviar('latido');
-      if (performance.now() - this.ultimoMensaje > 8000) this.perdida();
-    }, 1000);
+    this.latido = setInterval(() => this.tic(), 500);
     if (!this.alSalir) {
       this.alSalir = () => this.cerrar();
       window.addEventListener('pagehide', this.alSalir);
     }
+  }
+
+  tic() {
+    if (this.cerrando) return;
+    const ahora = performance.now();
+    if (this.conectada()) this.enviar('ping', { s: Math.round(ahora * 10) / 10 });
+    if (ahora - this.ultimoMensaje > 8000) this.perdida();
+  }
+
+  // Para pruebas: window.zonaPruebaRed = { ms: 150, variacion: 60 } simula una red lenta
+  entregar(m) {
+    const prueba = window.zonaPruebaRed;
+    if (!prueba) {
+      this.recibir(m);
+      return;
+    }
+    const en = Math.max(this.ultimaEntrega || 0, performance.now() + prueba.ms + Math.random() * (prueba.variacion || 0));
+    this.ultimaEntrega = en;
+    setTimeout(() => { if (!this.cerrando) this.recibir(m); }, en - performance.now());
   }
 
   recibir(m) {
@@ -127,6 +151,15 @@ export class Red {
     this.ultimoMensaje = performance.now();
     const { t, d } = m;
     if (t === 'latido') return;
+    if (t === 'ping') {
+      this.enviar('pong', d);
+      return;
+    }
+    if (t === 'pong') {
+      const muestra = performance.now() - (d?.s ?? performance.now());
+      if (muestra >= 0 && muestra < 10000) this.rtt = this.rtt ? this.rtt * 0.8 + muestra * 0.2 : muestra;
+      return;
+    }
     if (t === 'trozo') {
       // Llegó un pedazo de un mensaje grande: se arma cuando estén todos
       const b = this.trozos[d.id] || (this.trozos[d.id] = { partes: [], llegaron: 0 });
@@ -139,7 +172,13 @@ export class Red {
       return;
     }
     if (this.manejadorActual) this.manejadorActual(t, d);
-    else if (t !== 'estado' && t !== 'entrada') this.pendientes.push([t, d]);
+    else if (!SOLO_EN_VIVO.has(t)) this.pendientes.push([t, d]);
+  }
+
+  // Para lo que se manda muchas veces por segundo (posiciones): si se pierde uno, no importa
+  enviarRapido(t, d) {
+    this.enviar(t, d);
+    return true;
   }
 
   // PeerJS no deja mandar mensajes de más de ~16 KB: los grandes (como las fotos) se parten en trozos

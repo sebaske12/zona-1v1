@@ -5,9 +5,9 @@ import { COLORES_JUGADOR, FUENTE, UI, colorVida } from '../config.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { conCara } from '../sistemas/Caras.js';
 
-export const RADIO_JUGADOR = 14;
-const RADIO_CABEZA = 19; // la cabeza con foto es más grande que el cuerpo, como un muñeco cabezón
-const RODADA = { multiplicador: 3, dura: 0.15, recarga: 2 };
+export const RADIO_JUGADOR = 16;
+export const RADIO_CABEZA = 27; // la cabeza con foto es mucho más grande que el cuerpo, como un muñeco cabezón
+export const RODADA = { multiplicador: 3, dura: 0.15, recarga: 2 };
 const ORDEN_OBJETOS = ['botiquin', 'granada', 'gel'];
 const MAX_OBJETOS = { botiquin: BOTIQUIN.max, granada: GRANADA.max, gel: GEL.max };
 
@@ -121,6 +121,17 @@ export class Jugador {
   // Se llama en cada cuadro con la intención del jugador
   actualizar(intencion, dt) {
     if (!this.vivo) return;
+    const moviendose = this.moverYApuntar(intencion, dt);
+    this.actualizarCuracion(moviendose || intencion.disparar);
+    this.actualizarArma(intencion);
+    if (intencion.cambiar) this.cambiarObjeto();
+    if (intencion.usar) this.usarObjeto();
+    if (intencion.burla) this.escena.mostrarBurla(this, intencion.burla);
+  }
+
+  // Movimiento, rodada y hacia dónde mira. Devuelve si se está moviendo.
+  // (En línea, el invitado lo calcula en su propio aparato para que no haya retraso)
+  moverYApuntar(intencion, dt) {
     const escena = this.escena;
     const t = escena.reloj;
 
@@ -158,19 +169,25 @@ export class Jugador {
     } else {
       this.sprite.setVelocity(mov.x * velocidad, mov.y * velocidad);
     }
+    return moviendose;
+  }
 
-    // Curarse: si te mueves o disparas, se cancela
-    if (this.curando) {
-      if (moviendose || intencion.disparar) {
-        this.cancelarCuracion();
-      } else if (t >= this.curandoHasta) {
-        this.curandoHasta = 0;
-        this.objetos.botiquin--;
-        this.vida = Math.min(this.vidaMax, this.vida + BOTIQUIN.cura);
-        escena.efectoCuracion(this);
-      }
+  // Curarse: si te mueves o disparas, se cancela
+  actualizarCuracion(cancelar) {
+    if (!this.curando) return;
+    if (cancelar) {
+      this.cancelarCuracion();
+    } else if (this.escena.reloj >= this.curandoHasta) {
+      this.curandoHasta = 0;
+      this.objetos.botiquin--;
+      this.vida = Math.min(this.vidaMax, this.vida + BOTIQUIN.cura);
+      this.escena.efectoCuracion(this);
     }
+  }
 
+  // Recarga, apuntado del francotirador y disparos
+  actualizarArma(intencion) {
+    const t = this.escena.reloj;
     // Terminó la recarga
     if (this.recargandoHasta > 0 && t >= this.recargandoHasta) {
       this.recargandoHasta = 0;
@@ -194,10 +211,6 @@ export class Jugador {
         this.disparar();
       }
     }
-
-    if (intencion.cambiar) this.cambiarObjeto();
-    if (intencion.usar) this.usarObjeto();
-    if (intencion.burla) escena.mostrarBurla(this, intencion.burla);
   }
 
   // Apuntado asistido: mira al rival si lo ve y está a distancia de disparo
@@ -307,9 +320,11 @@ export class Jugador {
   dibujar() {
     const { x, y } = this.sprite;
     const escena = this.escena;
-    this.armaSprite.setPosition(x + Math.cos(this.angulo) * 6, y + Math.sin(this.angulo) * 6).setRotation(this.angulo);
+    // Con la cabeza grande el arma sale desde el borde de la cara, para que se vea
+    const salida = this.cabeza ? RADIO_CABEZA - 9 : 6;
+    this.armaSprite.setPosition(x + Math.cos(this.angulo) * salida, y + Math.sin(this.angulo) * salida).setRotation(this.angulo);
     if (this.accSprite) this.accSprite.setPosition(x, y).setRotation(this.angulo);
-    const subir = this.cabeza ? 6 : 0; // con cabeza grande, el nombre y la barra van más arriba
+    const subir = this.cabeza ? RADIO_CABEZA - 13 : 0; // con cabeza grande, el nombre y la barra van más arriba
     this.etiqueta.setPosition(x, y - 38 - subir);
     const ahora = escena.game.loop.time;
     if (this.cabeza) {
@@ -349,9 +364,10 @@ export class Jugador {
       if (!this.estrellas) {
         this.estrellas = [0, 1, 2].map(() => escena.add.text(x, y, '⭐', { fontSize: '13px' }).setOrigin(0.5).setDepth(22));
       }
+      const radio = this.cabeza ? RADIO_CABEZA + 6 : 22;
       this.estrellas.forEach((s, k) => {
         const a = ahora / 260 + (k * Math.PI * 2) / 3;
-        s.setPosition(x + Math.cos(a) * 22, y - 8 + Math.sin(a) * 9).setDepth(Math.sin(a) > 0 ? 22 : 8);
+        s.setPosition(x + Math.cos(a) * radio, y - 8 - subir + Math.sin(a) * 9).setDepth(Math.sin(a) > 0 ? 22 : 8);
       });
     }
     this.ultX = x;
@@ -406,7 +422,7 @@ export class Jugador {
         this.burlaTexto.destroy();
         this.burlaTexto = null;
       } else {
-        this.burlaTexto.setPosition(x, y - 60 - e * 16).setAlpha(e < 0.7 ? 1 : 1 - (e - 0.7) / 0.3);
+        this.burlaTexto.setPosition(x, y - 60 - subir - e * 16).setAlpha(e < 0.7 ? 1 : 1 - (e - 0.7) / 0.3);
       }
     }
   }

@@ -219,7 +219,7 @@ export class Ronda extends Phaser.Scene {
     this.reloj += dt;
 
     if (this.estado === 'jugando') {
-      leidas.forEach((intencion, i) => this.jugadores[i].actualizar(intencion, dt));
+      leidas.forEach((intencion, i) => this.actualizarJugador(this.jugadores[i], intencion, dt));
     } else {
       this.jugadores.forEach((j) => j.vivo && j.sprite.setVelocity(0, 0));
     }
@@ -239,6 +239,11 @@ export class Ronda extends Phaser.Scene {
       this.finalRestante -= realDt;
       if (this.finalRestante <= 0) this.siguiente();
     }
+  }
+
+  // RondaEnLinea la reemplaza para el jugador que está en el otro aparato
+  actualizarJugador(j, intencion, dt) {
+    j.actualizar(intencion, dt);
   }
 
   dibujar() {
@@ -445,7 +450,7 @@ export class Ronda extends Phaser.Scene {
     const bx = j.x + Math.cos(angulo) * 22;
     const by = j.y + Math.sin(angulo) * 22;
     Sonido.tocar(d.sonido);
-    if (d.sacudida) this.cameras.main.shake(90, d.sacudida);
+    if (d.sacudida) this.sacudidaDisparo(j, d.sacudida);
     if (d.retroceso) {
       j.sprite.x -= Math.cos(angulo) * d.retroceso;
       j.sprite.y -= Math.sin(angulo) * d.retroceso;
@@ -460,19 +465,29 @@ export class Ronda extends Phaser.Scene {
     const velocidad = d.velBala * j.stats.velBala;
     for (let i = 0; i < d.balas; i++) {
       const a = angulo + Phaser.Math.DegToRad((Math.random() - 0.5) * d.abertura);
-      const bala = this.balas.get(bx, by, 'bala');
-      if (!bala) return;
-      bala.enableBody(true, bx, by, true, true);
-      bala.esBala = true;
-      bala.setTexture(d.textura || (d.balas > 1 ? 'perdigon' : 'bala')).setRotation(a).setDepth(11);
-      bala.body.setCircle(3, bala.width / 2 - 3, bala.height / 2 - 3);
-      bala.dueno = j;
-      bala.dano = d.dano;
-      bala.arma = j.arma;
-      bala.restante = alcance;
-      bala.explosivo = d.explosivo || null; // los cohetes explotan
-      this.physics.velocityFromRotation(a, velocidad, bala.body.velocity);
+      if (!this.crearBala(j, bx, by, a, d, j.arma, velocidad, alcance)) return;
     }
+  }
+
+  // La pantalla tiembla con las armas fuertes (en línea, solo en el aparato del que dispara)
+  sacudidaDisparo(j, intensidad) {
+    this.cameras.main.shake(90, intensidad);
+  }
+
+  crearBala(j, x, y, a, d, arma, velocidad, alcance) {
+    const bala = this.balas.get(x, y, 'bala');
+    if (!bala) return null;
+    bala.enableBody(true, x, y, true, true);
+    bala.esBala = true;
+    bala.setTexture(d.textura || (d.balas > 1 ? 'perdigon' : 'bala')).setRotation(a).setDepth(11);
+    bala.body.setCircle(3, bala.width / 2 - 3, bala.height / 2 - 3);
+    bala.dueno = j;
+    bala.dano = d.dano;
+    bala.arma = arma;
+    bala.restante = alcance;
+    bala.explosivo = d.explosivo || null; // los cohetes explotan
+    this.physics.velocityFromRotation(a, velocidad, bala.body.velocity);
+    return bala;
   }
 
   dispararRayo(j, angulo, d, bx, by) {
@@ -484,7 +499,7 @@ export class Ronda extends Phaser.Scene {
   }
 
   // Dónde termina un rayo: el primer muro, pared de gel o jugador que toca
-  impactoRayo(x, y, angulo, alcance, ignorar) {
+  impactoRayo(x, y, angulo, alcance, ignorar, conJugadores = true) {
     const fx = x + Math.cos(angulo) * alcance;
     const fy = y + Math.sin(angulo) * alcance;
     const linea = new Phaser.Geom.Line(x, y, fx, fy);
@@ -497,7 +512,7 @@ export class Ronda extends Phaser.Scene {
     };
     for (const r of this.rectMuros) probar(Phaser.Geom.Intersects.GetLineToRectangle(linea, r), {});
     for (const gel of this.geles.getChildren()) probar(Phaser.Geom.Intersects.GetLineToRectangle(linea, gel.getBounds()), { gel });
-    for (const j of this.jugadores) {
+    for (const j of conJugadores ? this.jugadores : []) {
       if (j === ignorar || !j.vivo || j.rodando) continue;
       probar(Phaser.Geom.Intersects.GetLineToCircle(linea, new Phaser.Geom.Circle(j.x, j.y, RADIO_JUGADOR)), { jugador: j });
     }
@@ -605,11 +620,7 @@ export class Ronda extends Phaser.Scene {
 
   // Granadas y cohetes: daño en un círculo. Al que la causó le hace la mitad.
   explosion(x, y, dueno, dano, radio, arma) {
-    Sonido.tocar('explosion');
-    this.cameras.main.shake(220, 0.012);
-    this.fxFuego.explode(30, x, y);
-    this.fxHumo.explode(14, x, y);
-    this.destelloExplosion(x, y, radio);
+    this.efectosExplosion(x, y, radio, dueno);
     for (const j of this.jugadores) {
       if (!j.vivo) continue;
       if (Phaser.Math.Distance.Between(x, y, j.x, j.y) <= radio + RADIO_JUGADOR) {
@@ -619,6 +630,15 @@ export class Ronda extends Phaser.Scene {
     for (const gel of [...this.geles.getChildren()]) {
       if (Phaser.Math.Distance.Between(x, y, gel.x, gel.y) <= radio + 40) this.danarGel(gel, dano);
     }
+  }
+
+  // Lo que se ve y se oye de una explosión (sin el daño)
+  efectosExplosion(x, y, radio) {
+    Sonido.tocar('explosion');
+    this.cameras.main.shake(220, 0.012);
+    this.fxFuego.explode(30, x, y);
+    this.fxHumo.explode(14, x, y);
+    this.destelloExplosion(x, y, radio);
   }
 
   ponerGel(j, angulo) {
@@ -788,6 +808,7 @@ export class Ronda extends Phaser.Scene {
 
   mensaje(contenido, color = '#e7eaf2', dura = 2600) {
     this.mensajes.push({ texto: contenido, color, hasta: this.game.loop.time + dura });
+    if (this.mensajes.length > 6) this.mensajes.shift(); // solo se muestra el último
   }
 
   mensajeGrande(contenido, color = '#e7eaf2', dura = 1800) {
