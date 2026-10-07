@@ -1,0 +1,45 @@
+// Pantalla de título.
+import Phaser from 'phaser';
+import { UI } from '../config.js';
+import { Guardado, resumenRivalidad } from '../sistemas/Guardado.js';
+import { boton, texto, fondoMenu, circuloPunteado } from '../ui/ui.js';
+
+export class Menu extends Phaser.Scene {
+  constructor() {
+    super('Menu');
+  }
+
+  create() {
+    this.input.keyboard.clearCaptures();
+    const d = Guardado.leer();
+    fondoMenu(this);
+
+    const deco = this.add.graphics({ x: 640, y: 200 });
+    deco.lineStyle(4, 0x7ea0ff, 0.3);
+    circuloPunteado(deco, 0, 0, 185, 44);
+    deco.lineStyle(4, 0xff7468, 0.28);
+    circuloPunteado(deco, 0, 0, 125, 32);
+    this.tweens.add({ targets: deco, angle: 360, duration: 60000, repeat: -1 });
+
+    texto(this, 640, 200, 'ZONA 1v1', 116, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5).setStroke('#0d111d', 12);
+    texto(this, 640, 280, 'Duelo en la zona · para dos', 24, UI.suave).setOrigin(0.5);
+
+    const [a, b] = d.perfiles;
+    const riv = resumenRivalidad(d.partidas, a.nombre, b.nombre);
+    if (riv.total > 0) {
+      const t = texto(this, 640, 340, `${a.nombre}  ${riv.jugadores[0].victorias} – ${riv.jugadores[1].victorias}  ${b.nombre}`, 26, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
+      if (riv.lider !== null) {
+        const x = riv.lider === 0 ? t.x - t.width / 2 - 26 : t.x + t.width / 2 + 26;
+        this.add.image(x, 336, 'corona').setScale(1.1);
+      }
+    }
+
+    boton(this, 640, 420, 'Jugar', () => this.scene.start('Preparacion'), { ancho: 340, alto: 64, tam: 28, color: UI.rojo });
+    boton(this, 640, 496, 'Jugar en línea', () => this.scene.start('Sala'), { ancho: 340, color: UI.azul });
+    boton(this, 640, 564, 'Historial', () => this.scene.start('Historial'), { ancho: 340, color: UI.gris });
+    boton(this, 640, 632, 'Controles y ajustes', () => this.scene.start('Ajustes'), { ancho: 340, color: UI.gris });
+    texto(this, 640, 696, 'Enter para jugar en este PC', 15, UI.suave).setOrigin(0.5);
+
+    this.input.keyboard.on('keydown-ENTER', () => this.scene.start('Preparacion'));
+  }
+}
