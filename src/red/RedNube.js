@@ -247,6 +247,7 @@ export class RedNube extends Red {
       if (this.pc !== pc) return;
       if (this.canales.rapido?.readyState === 'open' && this.canales.seguro?.readyState === 'open') {
         this.via = 'directa';
+        this.intentos = 0; // si se vuelve a caer, se puede intentar de nuevo
         this.ultimoDirecto = performance.now();
         this.ultimoLatidoNube = performance.now();
         clearTimeout(this.limiteDirecta);

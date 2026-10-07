@@ -1,7 +1,7 @@
 // Pantalla de título.
 import Phaser from 'phaser';
 import { UI } from '../config.js';
-import { Guardado, resumenRivalidad } from '../sistemas/Guardado.js';
+import { Guardado, resumenRivalidad, parejaDeRivalidad } from '../sistemas/Guardado.js';
 import { boton, texto, fondoMenu, circuloPunteado } from '../ui/ui.js';
 import { esTactil } from '../entrada/entradas.js';
 import { Musica } from '../sistemas/Musica.js';
@@ -47,10 +47,10 @@ export class Menu extends Phaser.Scene {
     texto(this, 640, 200, 'ZONA 1v1', 116, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5).setStroke('#0d111d', 12);
     texto(this, 640, 280, 'Duelo en la zona · para dos', 24, UI.suave).setOrigin(0.5);
 
-    const [a, b] = d.perfiles;
-    const riv = resumenRivalidad(d.partidas, a.nombre, b.nombre);
+    const [a, b] = parejaDeRivalidad(d).nombres;
+    const riv = resumenRivalidad(d.partidas, a, b);
     if (riv.total > 0) {
-      const t = texto(this, 640, 340, `${a.nombre}  ${riv.jugadores[0].victorias} – ${riv.jugadores[1].victorias}  ${b.nombre}`, 26, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
+      const t = texto(this, 640, 340, `${a}  ${riv.jugadores[0].victorias} – ${riv.jugadores[1].victorias}  ${b}`, 26, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
       if (riv.lider !== null) {
         const x = riv.lider === 0 ? t.x - t.width / 2 - 26 : t.x + t.width / 2 + 26;
         this.add.image(x, 336, 'corona').setScale(1.1);

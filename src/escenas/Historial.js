@@ -4,7 +4,7 @@ import { COLORES_JUGADOR, UI } from '../config.js';
 import { nombreArma } from '../datos/armas.js';
 import { MAPAS } from '../datos/mapas.js';
 import { MODOS } from '../datos/modos.js';
-import { Guardado, resumenRivalidad } from '../sistemas/Guardado.js';
+import { Guardado, resumenRivalidad, parejaDeRivalidad } from '../sistemas/Guardado.js';
 import { boton, texto, fondoMenu } from '../ui/ui.js';
 import { Musica } from '../sistemas/Musica.js';
 
@@ -18,17 +18,18 @@ export class Historial extends Phaser.Scene {
     this.input.keyboard.clearCaptures();
     fondoMenu(this);
     const d = Guardado.leer();
-    const [a, b] = d.perfiles;
-    const r = resumenRivalidad(d.partidas, a.nombre, b.nombre);
+    const pareja = parejaDeRivalidad(d);
+    const [a, b] = pareja.nombres;
+    const r = resumenRivalidad(d.partidas, a, b);
     texto(this, 640, 44, 'Historial de la rivalidad', 38, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
 
     if (r.total === 0) {
-      texto(this, 640, 300, `Todavía no hay partidas entre ${a.nombre} y ${b.nombre}.\n¡Jueguen la primera!`, 24, UI.suave, { align: 'center' }).setOrigin(0.5);
+      texto(this, 640, 300, `Todavía no hay partidas entre ${a} y ${b}.\n¡Jueguen la primera!`, 24, UI.suave, { align: 'center' }).setOrigin(0.5);
     } else {
       texto(this, 640, 90, `${r.total} ${r.total === 1 ? 'partida jugada' : 'partidas jugadas'}`, 18, UI.suave).setOrigin(0.5);
       r.jugadores.forEach((s, i) => {
         const cx = i === 0 ? 340 : 940;
-        const color = COLORES_JUGADOR[d.perfiles[i].color];
+        const color = COLORES_JUGADOR[pareja.colores[i]] ?? COLORES_JUGADOR[i];
         if (r.lider === i) this.add.image(cx, 124, 'corona').setScale(1.4);
         texto(this, cx, 158, s.nombre, 30, color.css, { fontStyle: 'bold' }).setOrigin(0.5);
         texto(this, cx, 214, String(s.victorias), 64, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);

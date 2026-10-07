@@ -10,6 +10,7 @@ const BOTONES = [
   { id: 'burla', x: 1084, y: 546, r: 32, texto: '😂' },
 ];
 const RADIO_JOYSTICK = 64;
+export const BOTON_PAUSA = { x: 640, y: 682, r: 34 }; // lo dibuja el HUD; aquí se ignoran sus toques
 const REPOSO = { mover: { x: 170, y: 560 }, apuntar: { x: 900, y: 560 } };
 
 export class EntradaTactil {
@@ -30,6 +31,8 @@ export class EntradaTactil {
   }
 
   abajo(p) {
+    // Con el menú de pausa abierto, o tocando el botón ⏸, los dedos no mueven ni disparan
+    if (this.escena.menuTactil || Phaser.Math.Distance.Between(p.x, p.y, BOTON_PAUSA.x, BOTON_PAUSA.y) <= BOTON_PAUSA.r) return;
     // Este control solo se crea en celulares, así que se acepta cualquier toque
     // (algunos navegadores entregan el dedo como si fuera ratón)
     const b = BOTONES.find((x) => Phaser.Math.Distance.Between(p.x, p.y, x.x, x.y) <= x.r + 8);
@@ -57,6 +60,7 @@ export class EntradaTactil {
   }
 
   leer() {
+    if (this.escena.menuTactil) this.toques.clear(); // abrió el menú de pausa: se sueltan los joysticks
     const r = { moverX: 0, moverY: 0, apuntarX: 0, apuntarY: 0, disparar: false, ...this.pendientes };
     this.reiniciarToques();
     for (const t of this.toques.values()) {

@@ -8,6 +8,7 @@ import { nuevaPartida } from '../sistemas/Partida.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { boton, texto, fondoMenu, dibujarMiniMapa } from '../ui/ui.js';
 import { resumenTeclas } from '../entrada/Teclado.js';
+import { esTactil } from '../entrada/entradas.js';
 import { abrirCabina } from '../ui/Foto.js';
 import { fotoOmitida } from '../sistemas/Caras.js';
 import { mostrarCara } from '../ui/ui.js';
@@ -97,9 +98,13 @@ export class Preparacion extends Phaser.Scene {
     col.apuesta.node.maxLength = 60;
     col.apuesta.node.placeholder = i === 0 ? 'ej.: lava los platos' : 'ej.: invita el helado';
 
-    texto(this, cx, 560, this.esBot(i) ? 'La computadora maneja este jugador.' : resumenTeclas(i), 14, UI.suave, { align: 'center', lineSpacing: 4 }).setOrigin(0.5, 0);
-    if (this.esBot(i)) {
-      col.nombre.node.disabled = true;
+    let controles = resumenTeclas(i);
+    if (this.esBot(i)) controles = 'La computadora maneja este jugador.';
+    else if (esTactil(this)) controles = 'Joystick izquierdo: moverte\nDedo en la mitad derecha: apuntar y disparar';
+    texto(this, cx, 560, controles, 14, UI.suave, { align: 'center', lineSpacing: 4 }).setOrigin(0.5, 0);
+    if (this.esBot(i)) col.nombre.node.disabled = true;
+    if (this.bot) {
+      // Contra el bot no hay apuesta
       col.apuesta.setVisible(false);
       col.apuestaTitulo.setVisible(false);
     }
@@ -124,7 +129,7 @@ export class Preparacion extends Phaser.Scene {
     boton(this, 764, 430, '>', () => this.cambiar('modo', 1), { ancho: 44, alto: 40, tam: 22, color: UI.gris });
     this.modoTexto = texto(this, 640, 460, '', 15, UI.suave, { align: 'center', wordWrap: { width: 300 } }).setOrigin(0.5, 0);
 
-    texto(this, 640, 556, 'Al final, el que pierda paga\nlo que escribió el ganador.', 15, UI.suave, { align: 'center' }).setOrigin(0.5, 0);
+    if (!this.bot) texto(this, 640, 556, 'Al final, el que pierda paga\nlo que escribió el ganador.', 15, UI.suave, { align: 'center' }).setOrigin(0.5, 0);
   }
 
   nombre(i) {

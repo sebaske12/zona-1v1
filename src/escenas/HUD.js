@@ -8,6 +8,8 @@ import { duracionRonda } from '../datos/zona.js';
 import { esTactil } from '../entrada/entradas.js';
 import { resumenTeclas } from '../entrada/Teclado.js';
 import { conCara } from '../sistemas/Caras.js';
+import { boton } from '../ui/ui.js';
+import { BOTON_PAUSA } from '../entrada/Tactil.js';
 
 const estilo = (tam, color = '#e7eaf2') => ({ fontFamily: FUENTE, fontSize: `${Math.round(tam)}px`, color, fontStyle: 'bold' });
 const css = (color) => `#${color.toString(16).padStart(6, '0')}`;
@@ -42,8 +44,49 @@ export class HUD extends Phaser.Scene {
     this.crearAyudas();
     // En línea: el ping y por dónde va la conexión, abajo al centro
     this.red = this.claveRonda !== 'Ronda' ? this.registry.get('red') : null;
-    this.senal = this.add.text(640, 714, '', estilo(13 * f, '#9ba4ba')).setOrigin(0.5, 1).setStroke('#0d111d', 4);
+    this.senal = this.add.text(640, this.tactil ? 652 : 714, '', estilo(13 * f, '#9ba4ba')).setOrigin(0.5, 1).setStroke('#0d111d', 4);
     this.proximaSenal = 0;
+    r.menuTactil = false; // (la ronda se reutiliza: que no quede abierto de la vez anterior)
+    if (this.tactil) this.crearMenuTactil();
+  }
+
+  // En el celular no hay tecla Esc: un botón ⏸ para pausar (o salir, si es en línea)
+  crearMenuTactil() {
+    const enLinea = this.claveRonda !== 'Ronda';
+    this.btnPausa = boton(this, BOTON_PAUSA.x, BOTON_PAUSA.y, '⏸', () => this.abrirMenu(), { ancho: 56, alto: 44, tam: 22, color: UI.gris });
+    this.btnPausa.setAlpha(0.85);
+    const fondo = this.add.rectangle(640, 360, 1280, 720, 0x0d111d, 0.72).setInteractive();
+    const titulo = this.add.text(640, 262, enLinea ? '¿Salir de la partida?' : 'PAUSA', estilo(38)).setOrigin(0.5).setStroke('#0d111d', 6);
+    const sub = this.add.text(640, 316, enLinea ? 'La ronda sigue mientras decides. Si sales, la partida se termina para los dos.' : 'El juego está en pausa.', estilo(17, '#9ba4ba')).setOrigin(0.5);
+    const seguir = boton(this, 500, 410, enLinea ? 'Seguir jugando' : 'Seguir', () => this.cerrarMenu(), { ancho: 250, color: UI.azul });
+    const salir = boton(this, 790, 410, 'Salir al menú', () => this.salirAlMenu(), { ancho: 250, color: UI.rojo });
+    this.menu = this.add.container(0, 0, [fondo, titulo, sub, seguir, salir]).setDepth(90).setVisible(false);
+  }
+
+  abrirMenu() {
+    const r = this.ronda;
+    if (r.saliendo || r.estado === 'final' || this.menu.visible) return;
+    r.menuTactil = true;
+    if (this.claveRonda === 'Ronda' && !r.pausado) r.alternarPausa();
+    this.menu.setVisible(true);
+  }
+
+  cerrarMenu() {
+    const r = this.ronda;
+    r.menuTactil = false;
+    if (this.claveRonda === 'Ronda' && r.pausado) r.alternarPausa();
+    this.menu.setVisible(false);
+  }
+
+  salirAlMenu() {
+    const r = this.ronda;
+    r.menuTactil = false;
+    const red = this.registry.get('red');
+    if (red) {
+      red.cerrar();
+      this.registry.set('red', null);
+    }
+    r.scene.start('Menu');
   }
 
   // 📶 45 ms · directo: verde si va rápido, amarillo si va regular, rojo si va lento
@@ -131,6 +174,12 @@ export class HUD extends Phaser.Scene {
     this.puntaje.setText(`${p.rondas[0]} – ${p.rondas[1]}`);
     this.nombreIzq.x = 640 - this.puntaje.width / 2 - 14;
     this.nombreDer.x = 640 + this.puntaje.width / 2 + 14;
+    // Con nombres largos (y caras en los paneles) el nombre se achica para no taparlos
+    const [pi, pd] = this.paneles;
+    const libreIzq = this.nombreIzq.x - (pi.x + pi.ancho + 10);
+    const libreDer = pd.x - 10 - this.nombreDer.x;
+    this.nombreIzq.setScale(Phaser.Math.Clamp(libreIzq / Math.max(1, this.nombreIzq.width), 0.5, 1));
+    this.nombreDer.setScale(Phaser.Math.Clamp(libreDer / Math.max(1, this.nombreDer.width), 0.5, 1));
     const restante = Math.max(0, duracionRonda(r.modo.fases) - r.reloj);
     const min = Math.floor(restante / 60);
     const seg = Math.floor(restante % 60);
@@ -159,9 +208,19 @@ export class HUD extends Phaser.Scene {
       this.grande.setText('');
     }
 
-    if (r.pausado) {
+    const red = this.red;
+    if (r.pausado && this.tactil) {
+      this.textoPausa.setText(''); // en el celular se ve el menú de pausa con botones
+    } else if (r.pausado) {
       g.fillStyle(0x0d111d, 0.65).fillRect(0, 0, 1280, 720);
       this.textoPausa.setText('PAUSA\n\nEsc para seguir · M para ir al menú');
+    } else if (red && red.parejaAusente) {
+      // Tu pareja salió de la app (por ejemplo, a contestar un mensaje): la ronda espera
+      g.fillStyle(0x0d111d, 0.6).fillRect(0, 0, 1280, 720);
+      this.textoPausa.setText('⏸ Tu pareja salió de la app\n\nLa ronda sigue cuando vuelva');
+    } else if (red && red.silencio > 1500) {
+      g.fillStyle(0x0d111d, 0.45).fillRect(0, 0, 1280, 720);
+      this.textoPausa.setText('📶 Esperando a tu pareja…\n\nLa conexión está lenta');
     } else {
       this.textoPausa.setText('');
     }

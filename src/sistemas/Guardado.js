@@ -42,6 +42,7 @@ export function registroDePartida(p) {
   return {
     fecha: new Date().toISOString(),
     nombres: p.perfiles.map((x) => x.nombre),
+    bot: !!p.bot,
     ganador: p.ganador,
     marcador: [...p.rondas],
     modo: p.modo,
@@ -49,6 +50,25 @@ export function registroDePartida(p) {
     apuesta: (p.apuestas[p.ganador] || '').trim(),
     stats: p.estadisticas.map((e) => ({ bajas: e.bajas, dano: Math.round(e.dano), bajasPorArma: e.bajasPorArma })),
   };
+}
+
+// Entre quiénes se muestra la rivalidad: tú (jugador 1) y contra quien jugaste la última vez.
+// En el celular solo se juega en línea, así que el "jugador 2" guardado no es tu pareja:
+// por eso se busca en el historial (si no hay partidas, se usa el jugador 2 guardado).
+export function parejaDeRivalidad(datos) {
+  const [a, b] = datos.perfiles;
+  const norm = (s) => (s || '').trim().toLowerCase();
+  for (let i = datos.partidas.length - 1; i >= 0; i--) {
+    const partida = datos.partidas[i];
+    const n = partida.nombres || [];
+    if (partida.bot || n.some((x) => norm(x) === 'bot')) continue; // el entrenamiento no cuenta
+    const k = n.map(norm).indexOf(norm(a.nombre));
+    if (k >= 0 && n[1 - k]) {
+      const esB = norm(n[1 - k]) === norm(b.nombre);
+      return { nombres: [a.nombre, n[1 - k]], colores: [a.color, esB ? b.color : (a.color + 1) % 6] };
+    }
+  }
+  return { nombres: [a.nombre, b.nombre], colores: [a.color, b.color] };
 }
 
 // Resume la rivalidad entre dos nombres a partir del historial

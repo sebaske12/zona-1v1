@@ -199,7 +199,8 @@ export class RondaInvitado extends Ronda {
       this.interp.olvidarRed();
     }
     this.aplicarFotos(dt);
-    if (!this.saliendo && this.estadoAnfitrion === 'jugando' && yo.vivo) {
+    // Si el anfitrión salió de la app, la ronda está en pausa: tu jugador espera quieto
+    if (!this.saliendo && this.estadoAnfitrion === 'jugando' && yo.vivo && !this.red.parejaAusente) {
       this.reloj += dt;
       this.jugarPropio(yo, e, dt);
     } else if (yo.vivo) {

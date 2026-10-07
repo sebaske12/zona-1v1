@@ -286,6 +286,14 @@ export class RondaEnLinea extends Ronda {
       this.viaVista = this.red.via;
       this.remoto.interp.olvidarRed();
     }
+    // Si tu pareja salió de la app, la ronda se pausa hasta que vuelva (así nadie gana "regalado")
+    const ausente = !!this.red.parejaAusente && this.estado !== 'final';
+    if (ausente !== this.enPausaRed) {
+      this.enPausaRed = ausente;
+      if (ausente) this.physics.pause();
+      else this.physics.resume();
+    }
+    if (ausente) return;
     super.update(time, delta);
     const yo = this.jugadores[0];
     const ahora = performance.now();

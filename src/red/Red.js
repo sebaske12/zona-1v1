@@ -125,13 +125,32 @@ export class Red {
       this.alSalir = () => this.cerrar();
       window.addEventListener('pagehide', this.alSalir);
     }
+    // Si sales de la app un momento (por ejemplo, a contestar un mensaje), se le avisa a tu pareja:
+    // la partida se pausa y te espera hasta 45 s en vez de darse por perdida
+    if (!this.alCambiarVista) {
+      this.alCambiarVista = () => {
+        const oculta = document.visibilityState === 'hidden';
+        this.enviar('ausente', { si: oculta });
+        if (!oculta) {
+          // Mientras no se veía, los relojes estuvieron quietos: se cuenta desde ahora
+          this.ultimoMensaje = performance.now();
+          this.ultimoDirecto = performance.now();
+        }
+      };
+      document.addEventListener('visibilitychange', this.alCambiarVista);
+    }
   }
 
   tic() {
     if (this.cerrando) return;
     const ahora = performance.now();
     if (this.conectada()) this.enviar('ping', { s: Math.round(ahora * 10) / 10 });
-    if (ahora - this.ultimoMensaje > 8000) this.perdida();
+    if (ahora - this.ultimoMensaje > (this.parejaAusente ? 45000 : 10000)) this.perdida();
+  }
+
+  // Hace cuánto no llega nada del otro aparato (para avisar "Esperando a tu pareja…")
+  get silencio() {
+    return performance.now() - (this.ultimoMensaje || performance.now());
   }
 
   // Para pruebas: window.zonaPruebaRed = { ms: 150, variacion: 60 } simula una red lenta
@@ -153,6 +172,10 @@ export class Red {
     if (t === 'latido') return;
     if (t === 'ping') {
       this.enviar('pong', d);
+      return;
+    }
+    if (t === 'ausente') {
+      this.parejaAusente = !!d?.si;
       return;
     }
     if (t === 'pong') {
@@ -210,6 +233,7 @@ export class Red {
     this.cerrando = true;
     clearInterval(this.latido);
     if (this.alSalir) window.removeEventListener('pagehide', this.alSalir);
+    if (this.alCambiarVista) document.removeEventListener('visibilitychange', this.alCambiarVista);
     try { this.conn?.close(); } catch (e) { /* ya estaba cerrada */ }
     try { this.peer?.destroy(); } catch (e) { /* ya estaba cerrado */ }
     this.conn = null;

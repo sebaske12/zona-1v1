@@ -3,7 +3,7 @@
 import Phaser from 'phaser';
 import { COLORES_JUGADOR, UI } from '../config.js';
 import { VENTAJAS, MAX_VENTAJAS, sortearOpciones } from '../datos/ventajas.js';
-import { indiceDeControl } from '../entrada/entradas.js';
+import { indiceDeControl, esTactil } from '../entrada/entradas.js';
 import { teclasDe, nombreTecla } from '../entrada/Teclado.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { texto, fondoMenu } from '../ui/ui.js';
@@ -117,7 +117,11 @@ export class Ventajas extends Phaser.Scene {
       });
       let estado;
       if (lado.listo) estado = lado.elegida !== null ? '¡Listo!' : 'Ya tienes el máximo de ventajas';
-      else if (this.turno === lado.i) estado = this.esLocal(lado.i) ? (this.remoto === null ? ayuda(lado.i) : `Toca una carta o usa ${ayuda(0)}`) : 'Está eligiendo…';
+      else if (this.turno === lado.i) {
+        if (!this.esLocal(lado.i)) estado = 'Está eligiendo…';
+        else if (esTactil(this)) estado = 'Toca la carta que quieres';
+        else estado = this.remoto === null ? ayuda(lado.i) : `Toca una carta o usa ${ayuda(0)}`;
+      }
       else estado = `Esperando a que ${nombreOtro} elija…`;
       lado.estado.setText(estado);
     }
