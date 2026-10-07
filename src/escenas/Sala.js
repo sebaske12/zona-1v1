@@ -6,8 +6,8 @@ import { MODOS, ORDEN_MODOS } from '../datos/modos.js';
 import { Guardado } from '../sistemas/Guardado.js';
 import { nuevaPartida } from '../sistemas/Partida.js';
 import { crearRed } from '../red/conexion.js';
-import { caraValida, sinCaras } from '../sistemas/Caras.js';
-import { elegirFoto } from '../ui/Foto.js';
+import { caraValida, sinCaras, fotoOmitida } from '../sistemas/Caras.js';
+import { abrirCabina } from '../ui/Foto.js';
 import { mostrarCara } from '../ui/ui.js';
 import { boton, texto, fondoMenu } from '../ui/ui.js';
 import { Musica } from '../sistemas/Musica.js';
@@ -25,6 +25,7 @@ export class Sala extends Phaser.Scene {
     this.registry.set('red', null);
     this.red = null;
     this.estado = 'inicio';
+    this.cabinaAbierta = false;
     const datos = Guardado.leer();
     this.perfil = { ...datos.perfiles[0] };
     this.prep = { ...datos.preparacion };
@@ -80,17 +81,31 @@ export class Sala extends Phaser.Scene {
     this.codigoTexto = texto(this, 640, 548, '', 72, '#f2b544', { fontStyle: 'bold' }).setOrigin(0.5);
     this.estadoTexto = texto(this, 640, 618, '', 18, UI.texto, { align: 'center', wordWrap: { width: 900 } }).setOrigin(0.5);
     boton(this, 90, 680, '← Menú', () => this.volver(), { ancho: 140, alto: 44, tam: 18, color: UI.gris });
-    this.input.keyboard.on('keydown-ESC', () => this.volver());
+    this.input.keyboard.on('keydown-ESC', () => { if (!this.cabinaAbierta) this.volver(); });
     this.refrescar();
   }
 
-  foto() {
-    if (this.estado !== 'inicio') return;
-    elegirFoto((datos) => {
-      if (!datos || !this.scene.isActive()) return;
-      this.perfil.cara = datos;
-      this.refrescar();
+  foto(alTerminar = null) {
+    if (this.estado !== 'inicio' || this.cabinaAbierta) return;
+    this.cabinaAbierta = true;
+    const nombre = this.inNombre.node.value.trim() || this.perfil.nombre;
+    abrirCabina({
+      titulo: `¡Foto de ${nombre}!`,
+      alTerminar: (datos) => {
+        this.cabinaAbierta = false;
+        if (!this.scene.isActive()) return;
+        if (datos) this.perfil.cara = datos;
+        else fotoOmitida(this, nombre, true); // "Ahora no": no se vuelve a preguntar hoy
+        this.refrescar();
+        if (alTerminar) alTerminar();
+      },
     });
+  }
+
+  // Antes de crear la sala o unirse: si todavía no tienes cara, primero la foto
+  faltaFoto() {
+    const nombre = this.inNombre.node.value.trim() || this.perfil.nombre;
+    return !this.perfil.cara && !fotoOmitida(this, nombre);
   }
 
   refrescar() {
@@ -132,7 +147,11 @@ export class Sala extends Phaser.Scene {
   }
 
   crear() {
-    if (this.estado !== 'inicio') return;
+    if (this.estado !== 'inicio' || this.cabinaAbierta) return;
+    if (this.faltaFoto()) {
+      this.foto(() => this.crear());
+      return;
+    }
     this.guardarPerfil();
     this.estado = 'creando';
     this.ocupado(true);
@@ -174,10 +193,14 @@ export class Sala extends Phaser.Scene {
   }
 
   unirse() {
-    if (this.estado !== 'inicio') return;
+    if (this.estado !== 'inicio' || this.cabinaAbierta) return;
     const codigo = this.inCodigo.node.value.trim().toUpperCase();
     if (codigo.length !== 4) {
       this.estadoTexto.setText('El código tiene 4 letras.').setColor('#ff7468');
+      return;
+    }
+    if (this.faltaFoto()) {
+      this.foto(() => this.unirse());
       return;
     }
     this.guardarPerfil();

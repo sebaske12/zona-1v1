@@ -47,6 +47,7 @@ const SONIDOS = {
   rifle: (t) => { ruido(t, 0.1, { vol: 0.5, frec: 3200, frecFin: 600 }); tono(t, 0.08, { frec: 200, frecFin: 60, vol: 0.2 }); },
   escopeta: (t) => { ruido(t, 0.28, { vol: 0.8, frec: 1800, frecFin: 200 }); tono(t, 0.16, { frec: 130, frecFin: 40, tipo: 'sawtooth', vol: 0.3 }); },
   franco: (t) => { ruido(t, 0.4, { vol: 0.9, frec: 4000, frecFin: 150 }); tono(t, 0.3, { frec: 500, frecFin: 45, tipo: 'sawtooth', vol: 0.3 }); },
+  foto: (t) => { ruido(t, 0.07, { vol: 0.4, filtro: 'highpass', frec: 3000 }); tono(t + 0.05, 0.05, { frec: 1800, vol: 0.12 }); ruido(t + 0.09, 0.06, { vol: 0.3, filtro: 'highpass', frec: 2500 }); },
   cohete: (t) => { ruido(t, 0.4, { vol: 0.45, filtro: 'bandpass', frec: 900, frecFin: 250 }); tono(t, 0.3, { frec: 110, frecFin: 55, tipo: 'sine', vol: 0.35 }); },
   apuntar: (t) => { tono(t, 0.12, { frec: 1200, frecFin: 1800, tipo: 'sine', vol: 0.12 }); },
   golpe: (t) => { tono(t, 0.06, { frec: 900, frecFin: 500, vol: 0.12 }); },

@@ -37,6 +37,17 @@ export function caraValida(datos) {
   return typeof datos === 'string' && datos.startsWith('data:image/') && datos.length < 150000 ? datos : null;
 }
 
+// Quién dijo "Ahora no" a la foto (se recuerda mientras el juego esté abierto)
+export function fotoOmitida(escena, nombre, marcar = false) {
+  const omitidas = escena.registry.get('fotosOmitidas') || {};
+  const clave = (nombre || '').trim().toLowerCase();
+  if (marcar) {
+    omitidas[clave] = true;
+    escena.registry.set('fotosOmitidas', omitidas);
+  }
+  return !!omitidas[clave];
+}
+
 // Para mandar por la red sin las fotos (cada aparato ya tiene las caras)
 export function sinCaras(config) {
   return { ...config, perfiles: config.perfiles.map(({ cara, ...resto }) => resto) };

@@ -679,6 +679,7 @@ export class Ronda extends Phaser.Scene {
     }
     const p = this.partida;
     if (ganador) {
+      ganador.festejar();
       p.rondas[ganador.indice]++;
       p.estadisticas[ganador.indice].rondas++;
       Sonido.tocar('ronda');
@@ -723,6 +724,7 @@ export class Ronda extends Phaser.Scene {
   destello(j) {
     if (!j.vivo) return;
     j.destello = true;
+    j.boing();
     j.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     j.cabeza?.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
     this.time.delayedCall(70, () => {

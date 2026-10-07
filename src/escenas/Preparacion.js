@@ -8,7 +8,8 @@ import { nuevaPartida } from '../sistemas/Partida.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { boton, texto, fondoMenu, dibujarMiniMapa } from '../ui/ui.js';
 import { resumenTeclas } from '../entrada/Teclado.js';
-import { elegirFoto } from '../ui/Foto.js';
+import { abrirCabina } from '../ui/Foto.js';
+import { fotoOmitida } from '../sistemas/Caras.js';
 import { mostrarCara } from '../ui/ui.js';
 import { Musica } from '../sistemas/Musica.js';
 
@@ -28,6 +29,8 @@ export class Preparacion extends Phaser.Scene {
     Musica.poner('menu');
     this.input.keyboard.clearCaptures();
     this.saliendo = false;
+    this.cabinaAbierta = false;
+    this.fotosRevisadas = false;
     const datos = Guardado.leer();
     this.perfiles = datos.perfiles.map((p) => ({ ...p }));
     this.prep = { ...datos.preparacion, vida: [...datos.preparacion.vida], apuestas: [...datos.preparacion.apuestas] };
@@ -46,7 +49,7 @@ export class Preparacion extends Phaser.Scene {
     boton(this, 640, 664, '¡A jugar!', () => this.empezar(), { ancho: 300, alto: 64, tam: 28, color: UI.rojo });
     boton(this, 90, 680, '← Menú', () => this.scene.start('Menu'), { ancho: 140, alto: 44, tam: 18, color: UI.gris });
     this.input.keyboard.on('keydown-ENTER', () => this.empezar());
-    this.input.keyboard.on('keydown-ESC', () => this.scene.start('Menu'));
+    this.input.keyboard.on('keydown-ESC', () => { if (!this.cabinaAbierta) this.scene.start('Menu'); });
     this.refrescar();
   }
 
@@ -157,12 +160,30 @@ export class Preparacion extends Phaser.Scene {
     this.modoTexto.setText(modo.texto);
   }
 
-  foto(i) {
-    elegirFoto((datos) => {
-      if (!datos || !this.scene.isActive()) return;
-      this.perfiles[i].cara = datos;
-      this.refrescar();
+  foto(i, alTerminar = null) {
+    if (this.cabinaAbierta) return;
+    this.cabinaAbierta = true;
+    abrirCabina({
+      titulo: `¡Foto de ${this.nombre(i)}!`,
+      alTerminar: (datos) => {
+        this.cabinaAbierta = false;
+        if (!this.scene.isActive()) return;
+        if (datos) this.perfiles[i].cara = datos;
+        else fotoOmitida(this, this.nombre(i), true); // tocó "Ahora no": no se vuelve a preguntar hoy
+        this.refrescar();
+        if (alTerminar) alTerminar();
+      },
     });
+  }
+
+  // Al empezar a jugar, la cabina de fotos se abre para quien todavía no tiene cara
+  pedirFotosFaltantes(alTerminar) {
+    const faltan = [0, 1].filter((i) => !this.esBot(i) && !this.perfiles[i].cara && !fotoOmitida(this, this.nombre(i)));
+    if (!faltan.length) {
+      alTerminar();
+      return;
+    }
+    this.foto(faltan[0], () => this.pedirFotosFaltantes(alTerminar));
   }
 
   elegirColor(i, k) {
@@ -185,7 +206,12 @@ export class Preparacion extends Phaser.Scene {
   }
 
   empezar() {
-    if (this.saliendo) return;
+    if (this.saliendo || this.cabinaAbierta) return;
+    if (!this.fotosRevisadas) {
+      this.fotosRevisadas = true;
+      this.pedirFotosFaltantes(() => this.empezar());
+      return;
+    }
     this.saliendo = true;
     this.perfiles.forEach((p, i) => {
       p.nombre = this.nombre(i).slice(0, 14);

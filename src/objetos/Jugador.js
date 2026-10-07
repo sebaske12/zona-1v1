@@ -69,6 +69,9 @@ export class Jugador {
     }
     this.ultX = x;
     this.ultY = y;
+    this.boingInicio = -1e9; // cuándo le pegaron (para el "boing" de la cabeza)
+    this.festejo = false;
+    this.estrellas = null;
     this.etiqueta = escena.add.text(x, y - 36, this.nombre, { fontFamily: FUENTE, fontSize: '14px', color: this.colorCss, fontStyle: 'bold' })
       .setOrigin(0.5).setDepth(20).setStroke('#0d111d', 4);
     this.barra = escena.add.graphics().setDepth(20);
@@ -92,6 +95,16 @@ export class Jugador {
     this.recargandoHasta = 0;
     this.apuntandoHasta = 0;
     this.armaSprite.setTexture(`arma-${arma}`);
+  }
+
+  // Le pegaron: la cabeza se aplasta y tambalea
+  boing() {
+    this.boingInicio = this.escena.game.loop.time;
+  }
+
+  // Ganó la ronda: la cabeza salta de felicidad
+  festejar() {
+    this.festejo = true;
   }
 
   // El jugador de este aparato: anillo blanco y "(tú)" para encontrarse rápido
@@ -298,14 +311,48 @@ export class Jugador {
     if (this.accSprite) this.accSprite.setPosition(x, y).setRotation(this.angulo);
     const subir = this.cabeza ? 6 : 0; // con cabeza grande, el nombre y la barra van más arriba
     this.etiqueta.setPosition(x, y - 38 - subir);
+    const ahora = escena.game.loop.time;
     if (this.cabeza) {
       // La cabeza rebota al caminar (se estira y se aplasta un poquito)
       const moviendo = this.vivo && Math.hypot(x - this.ultX, y - this.ultY) > 0.5;
-      const rebote = moviendo ? Math.sin(escena.game.loop.time / 55) * 0.08 : 0;
+      const rebote = moviendo ? Math.sin(ahora / 55) * 0.08 : 0;
+      let sx = 1 + rebote;
+      let sy = 1 - rebote;
+      let angulo = 0;
+      let salto = 0;
+      // "Boing" cuando le pegan
+      const b = (ahora - this.boingInicio) / 320;
+      if (b >= 0 && b < 1) {
+        const onda = Math.sin(b * Math.PI) * (1 - b);
+        sx += 0.42 * onda;
+        sy -= 0.34 * onda;
+        angulo = Math.sin(b * Math.PI * 4) * 24 * (1 - b);
+      }
+      // Saltitos de felicidad del que ganó la ronda
+      if (this.festejo && this.vivo) {
+        const s = Math.abs(Math.sin(ahora / 110));
+        salto = -12 * s;
+        sy += 0.16 * s;
+        sx -= 0.08 * s;
+        angulo = Math.sin(ahora / 90) * 12;
+      }
       const e = this.escalaCabeza || 1;
-      this.anilloCabeza.setPosition(x, y - 3);
-      this.cabeza.setPosition(x, y - 3);
-      if (this.vivo) this.cabeza.setScale(e * (1 + rebote), e * (1 - rebote));
+      this.anilloCabeza.setPosition(x, y - 3 + salto);
+      this.cabeza.setPosition(x, y - 3 + salto);
+      if (this.vivo) {
+        this.cabeza.setScale(e * sx, e * sy).setAngle(angulo);
+        this.anilloCabeza.setScale(sx, sy);
+      }
+    }
+    // Estrellitas dando vueltas sobre el que cayó
+    if (!this.vivo) {
+      if (!this.estrellas) {
+        this.estrellas = [0, 1, 2].map(() => escena.add.text(x, y, '⭐', { fontSize: '13px' }).setOrigin(0.5).setDepth(22));
+      }
+      this.estrellas.forEach((s, k) => {
+        const a = ahora / 260 + (k * Math.PI * 2) / 3;
+        s.setPosition(x + Math.cos(a) * 22, y - 8 + Math.sin(a) * 9).setDepth(Math.sin(a) > 0 ? 22 : 8);
+      });
     }
     this.ultX = x;
     this.ultY = y;

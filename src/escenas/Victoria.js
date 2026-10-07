@@ -51,7 +51,8 @@ export class Victoria extends Phaser.Scene {
     if (p.perfiles[g].cara) {
       const anillo = this.add.circle(0, 0, 0, 0xffffff);
       const cara = this.add.image(0, 0, 'cuerpo');
-      const caja = this.add.container(320, 100, [anillo, cara]);
+      const corona = this.add.image(0, -70, 'corona').setScale(2.2).setAngle(-12);
+      const caja = this.add.container(320, 104, [anillo, cara, corona]);
       mostrarCara(this, cara, anillo, p.perfiles[g].cara, cg.valor, 120);
       this.tweens.add({ targets: caja, angle: { from: -10, to: 10 }, scale: { from: 0.95, to: 1.08 }, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }

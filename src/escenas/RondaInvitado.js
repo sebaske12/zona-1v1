@@ -208,6 +208,7 @@ export class RondaInvitado extends Ronda {
   camaraFinal() {
     const caido = this.jugadores.find((j) => !j.vivo);
     if (!caido) return;
+    this.jugadores.find((j) => j.vivo)?.festejar();
     const cam = this.cameras.main;
     cam.stopFollow();
     cam.pan(caido.x, caido.y, 700, 'Sine.easeInOut');

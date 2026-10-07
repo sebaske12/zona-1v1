@@ -52,8 +52,11 @@ Después, cada uno abre el link `https://TU-USUARIO.github.io/zona-1v1/` y usa *
 - **Mapas:** Bodega, Pueblo (casas con puertas), Isla (un río que te frena y un puente) y Mercado (puestos y pasillos).
 - **Armas:** pistola, subfusil, escopeta, rifle, francotirador (con láser de aviso), lanzacohetes (el cohete es lento
   y explota en un área) y rifle dorado (solo en el airdrop).
-- **Tu cara en el muñeco:** en la preparación (o en la sala en línea) toca **📷 Tu cara**, toma o elige una foto,
-  acomódala en el círculo y se convierte en caricatura. En el juego tu muñeco tiene cabeza grande con tu cara.
+- **Tu cara en el muñeco (cabina de fotos):** al empezar a jugar, a quien no tenga foto se le abre la cámara frontal
+  en vivo con un estilo chistoso: 🤪 Cabezón, 👀 Ojos saltones, 🥸 Bigotón, 🤡 Payaso, 👽 Alien o 🙂 Normal.
+  Pones la cara en el óvalo, tocas **📸 ¡Foto!** (cuenta 3, 2, 1 y flash) y listo. También se puede elegir de la
+  galería o tocar "Ahora no". Para cambiarla después: **📷 Tu cara**. En el juego la cabeza rebota, hace "boing"
+  cuando te pegan, le salen estrellitas cuando caes y salta cuando ganas la ronda.
 - **En el celular** la cámara sigue a tu jugador con zoom, y unas flechas en el borde señalan al rival, al airdrop y a la zona.
 - **Actualizaciones:** cuando se publica una versión nueva, el menú muestra "¡Hay una versión nueva!" para actualizar con un toque.
   La versión está abajo a la derecha del menú.
