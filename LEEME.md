@@ -46,9 +46,12 @@ Después, cada uno abre el link `https://TU-USUARIO.github.io/zona-1v1/` y usa *
 
 ## Qué trae
 
-- **Modos:** Clásico, Solo escopetas, Un tiro (1 de vida, 30 s) y Caos (caen objetos cada 10 s).
-- **Mapas:** Bodega, Pueblo (casas con puertas) e Isla (un río que te frena y un puente).
-- **Armas:** pistola, subfusil, escopeta, rifle, francotirador (con láser de aviso) y rifle dorado (solo en el airdrop).
+- **Modos:** Clásico, Solo escopetas, Francotiradores, Un tiro (1 de vida, 30 s) y Caos (caen objetos cada 10 s).
+- **Mapas:** Bodega, Pueblo (casas con puertas), Isla (un río que te frena y un puente) y Mercado (puestos y pasillos).
+- **Armas:** pistola, subfusil, escopeta, rifle, francotirador (con láser de aviso), lanzacohetes (el cohete es lento
+  y explota en un área) y rifle dorado (solo en el airdrop).
+- **Música** que se acelera cuando la zona se cierra del todo. Se apaga en Ajustes.
+- **Cambiar teclas:** Ajustes → Cambiar teclas. Si eliges una tecla que ya usaba otra acción, se intercambian.
 - **Objetos:** botiquín (2 s quieto), chaleco, granada y pared de gel.
 - **Ventajas entre rondas:** el que perdió elige primero y no ve las cartas del otro.
 - **Lo de pareja:** apuesta (el que pierde paga lo que escribió el ganador), historial con rachas y corona,
