@@ -84,7 +84,9 @@ Cada vez que guardes cambios y hagas `git push`, se vuelve a publicar solo.
 - **El iPhone no abre la dirección:** los dos deben estar en el mismo WiFi que el PC y `Jugar.bat` abierto.
   Si cambió la dirección, mírala otra vez en la ventana negra.
 - **No suena en el iPhone:** quita el modo silencio (el interruptor del costado). Toca la pantalla una vez.
-- **En línea no conecta:** prueben los dos en WiFi. Algunas redes de datos móviles bloquean la conexión directa.
+- **En línea:** desde la versión 1.3 las salas pasan por un servidor propio en Cloudflare, así que funciona
+  con WiFi, con datos móviles y cada uno en su casa. Si no conecta, revisen que los dos tengan internet
+  y la misma versión (abajo a la derecha del menú).
 - **Con un solo teclado no responden las teclas de los dos:** algunos teclados no aguantan muchas teclas a la vez.
   Conecta un control USB o Bluetooth para uno de los dos.
 
@@ -95,5 +97,7 @@ Cada vez que guardes cambios y hagas `git push`, se vuelve a publicar solo.
 - `src/escenas/`: las pantallas (menú, preparación, ronda, HUD, ventajas, victoria, historial, sala en línea…).
 - `src/objetos/Jugador.js`: el personaje.
 - `src/entrada/`: teclado, control, ratón, pantalla táctil, red y bot. Todos producen la misma "intención".
-- `src/red/Red.js`: la conexión en línea (PeerJS).
+- `src/red/`: la conexión en línea. `RedNube.js` usa el servidor de salas; `Red.js` es la conexión directa (PeerJS) de respaldo.
+- `servidor/`: el servidor de salas (Cloudflare Workers, plan gratis). Para publicarlo de nuevo:
+  `cd servidor` y `npx wrangler deploy`. Su dirección está en `src/red/servidor.js`.
 - `src/sistemas/`: sonidos (generados con código), guardado e historial.
