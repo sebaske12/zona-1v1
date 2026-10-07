@@ -4,6 +4,8 @@ import Phaser from 'phaser';
 import { FUENTE, UI, colorVida } from '../config.js';
 import { ARMAS, CHALECO } from '../datos/armas.js';
 import { duracionRonda } from '../datos/zona.js';
+import { esTactil } from '../entrada/entradas.js';
+import { resumenTeclas } from '../entrada/Teclado.js';
 
 const PANEL = { ancho: 260, alto: 84 };
 
@@ -30,6 +32,27 @@ export class HUD extends Phaser.Scene {
     this.grande = this.add.text(640, 320, '', estilo(76)).setOrigin(0.5).setStroke('#0d111d', 12);
     this.textoPausa = this.add.text(640, 360, '', { ...estilo(26), align: 'center' }).setOrigin(0.5).setStroke('#0d111d', 6);
     this.paneles = r.jugadores.map((j, i) => this.crearPanel(j, i));
+    this.crearAyudas();
+  }
+
+  // Recordatorio de controles al empezar la ronda
+  crearAyudas() {
+    const r = this.ronda;
+    const ayuda = (x, y, contenido) => this.add.text(x, y, contenido, { ...estilo(13, '#e7eaf2'), align: 'center', lineSpacing: 3 })
+      .setOrigin(0.5, 0).setStroke('#0d111d', 4);
+    this.ayudas = [];
+    if (esTactil(this)) {
+      this.ayudas.push(ayuda(640, 430, 'Joystick izquierdo: moverte · Toca la mitad derecha: apuntar y disparar\nRodar esquiva las balas · Usar: botiquín, granada o pared de gel'));
+      return;
+    }
+    const enLinea = this.claveRonda !== 'Ronda';
+    const propio = this.claveRonda === 'RondaInvitado' ? 1 : 0;
+    this.paneles.forEach((panel, i) => {
+      if (r.partida.bot && i === 1) return;
+      if (enLinea && i !== propio) return;
+      const teclas = resumenTeclas(enLinea ? 0 : i) + (enLinea ? '\nRatón: apunta · Clic: dispara' : '');
+      this.ayudas.push(ayuda(panel.x + PANEL.ancho / 2, panel.y + PANEL.alto + 8, teclas));
+    });
   }
 
   crearPanel(j, i) {
@@ -61,6 +84,9 @@ export class HUD extends Phaser.Scene {
     this.info.setText(`Ronda ${p.numeroRonda} · ${r.modo.nombre} · ${min}:${String(seg).padStart(2, '0')}`);
 
     for (const panel of this.paneles) this.dibujarPanel(panel, g);
+    // La ayuda de controles se ve en la cuenta regresiva y se apaga a los 5 segundos
+    const alfaAyuda = r.estado === 'cuenta' ? 1 : Phaser.Math.Clamp(5 - r.reloj, 0, 1);
+    for (const a of this.ayudas) a.setAlpha(alfaAyuda);
 
     const ahora = this.game.loop.time;
     const msg = r.mensajes[r.mensajes.length - 1];

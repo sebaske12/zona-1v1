@@ -1,6 +1,6 @@
 // Junta varias fuentes (teclado, control, ratón, pantalla táctil) en una sola intención por jugador.
 import Phaser from 'phaser';
-import { EntradaTeclado, teclasDe } from './Teclado.js';
+import { EntradaTeclado, teclasDe, teclasExtraDe } from './Teclado.js';
 import { EntradaControl } from './Control.js';
 import { EntradaRaton } from './Raton.js';
 import { EntradaTactil } from './Tactil.js';
@@ -45,12 +45,17 @@ export function esTactil(escena) {
   return d.input.touch && !d.os.desktop;
 }
 
-// Mismo PC: J1 con W A S D y J2 con las flechas, cada uno con su control
+// Mismo PC: J1 con W A S D y J2 con las flechas, cada uno con su control.
+// En un celular, el J1 además tiene los joysticks en pantalla (para entrenar contra el bot).
 export function crearEntradasLocales(escena) {
-  return [0, 1].map((i) => new EntradaCombinada([
-    new EntradaTeclado(escena, teclasDe(i)),
-    new EntradaControl(escena, indiceDeControl(i)),
-  ]));
+  return [0, 1].map((i) => {
+    const fuentes = [
+      new EntradaTeclado(escena, teclasDe(i), teclasExtraDe(i)),
+      new EntradaControl(escena, indiceDeControl(i)),
+    ];
+    if (i === 0 && esTactil(escena)) fuentes.push(new EntradaTactil(escena));
+    return new EntradaCombinada(fuentes);
+  });
 }
 
 // En línea: quien juega en este aparato usa las teclas del J1, el primer control

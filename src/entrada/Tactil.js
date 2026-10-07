@@ -33,7 +33,8 @@ export class EntradaTactil {
   }
 
   abajo(p) {
-    if (!p.wasTouch) return;
+    // Este control solo se crea en celulares, así que se acepta cualquier toque
+    // (algunos navegadores entregan el dedo como si fuera ratón)
     const b = BOTONES.find((x) => Phaser.Math.Distance.Between(p.x, p.y, x.x, x.y) <= x.r + 8);
     if (b) {
       if (b.id === 'burla') this.pendientes.burla = Phaser.Math.Between(1, 3);

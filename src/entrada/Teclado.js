@@ -11,6 +11,21 @@ export const TECLAS = [
   { arriba: 'UP', abajo: 'DOWN', izquierda: 'LEFT', derecha: 'RIGHT', disparar: 'K', rodada: 'J', usar: 'L', cambiar: 'I', burla1: 'EIGHT', burla2: 'NINE', burla3: 'ZERO' },
 ];
 
+// Teclas de repuesto (fijas): sirven si el teclado no detecta la principal junto con las flechas
+const TECLAS_EXTRA = [{}, { disparar: ['ENTER', 'NUMPAD_ZERO'] }];
+
+// Solo las de repuesto que el otro jugador no esté usando
+export function teclasExtraDe(i) {
+  const otro = Object.values(teclasDe(1 - i));
+  const propias = Object.values(teclasDe(i));
+  const extra = {};
+  for (const [accion, lista] of Object.entries(TECLAS_EXTRA[i])) {
+    const libres = lista.filter((k) => !otro.includes(k) && !propias.includes(k));
+    if (libres.length) extra[accion] = libres;
+  }
+  return extra;
+}
+
 export const ACCIONES = [
   ['arriba', 'Arriba'], ['abajo', 'Abajo'], ['izquierda', 'Izquierda'], ['derecha', 'Derecha'],
   ['disparar', 'Disparar'], ['rodada', 'Rodada'], ['usar', 'Usar objeto'], ['cambiar', 'Cambiar objeto'],
@@ -55,12 +70,15 @@ export function resumenTeclas(i) {
   const n = (a) => nombreTecla(t[a]);
   const mover = i === 1 && t.arriba === 'UP' && t.abajo === 'DOWN' && t.izquierda === 'LEFT' && t.derecha === 'RIGHT'
     ? 'Flechas' : `${n('arriba')} ${n('izquierda')} ${n('abajo')} ${n('derecha')}`;
-  return `${mover} · ${n('disparar')} dispara · ${n('rodada')} rueda\n${n('usar')} usa objeto · ${n('cambiar')} cambia · ${n('burla1')} ${n('burla2')} ${n('burla3')} burlas`;
+  const extra = (teclasExtraDe(i).disparar || []).map(nombreTecla);
+  const dispara = [n('disparar'), ...extra].join(' o ');
+  return `${mover} · ${dispara} dispara · ${n('rodada')} rueda\n${n('usar')} usa objeto · ${n('cambiar')} cambia · ${n('burla1')} ${n('burla2')} ${n('burla3')} burlas`;
 }
 
 export class EntradaTeclado {
-  constructor(escena, teclas) {
+  constructor(escena, teclas, extra = {}) {
     this.t = escena.input.keyboard.addKeys(teclas);
+    this.extraDisparar = (extra.disparar || []).map((k) => escena.input.keyboard.addKey(k));
   }
 
   leer() {
@@ -70,7 +88,7 @@ export class EntradaTeclado {
       moverY: (t.abajo.isDown ? 1 : 0) - (t.arriba.isDown ? 1 : 0),
       apuntarX: 0,
       apuntarY: 0, // con teclado el apuntado es asistido
-      disparar: t.disparar.isDown,
+      disparar: t.disparar.isDown || this.extraDisparar.some((k) => k.isDown),
       rodada: JustDown(t.rodada),
       usar: JustDown(t.usar),
       cambiar: JustDown(t.cambiar),

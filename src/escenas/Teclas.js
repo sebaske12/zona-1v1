@@ -22,15 +22,17 @@ export class Teclas extends Phaser.Scene {
     this.esperando = null;
     fondoMenu(this);
     texto(this, 640, 40, 'Cambiar teclas', 38, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
-    texto(this, 640, 82, 'Toca una casilla y después presiona la tecla nueva. Esc cancela. Esc no se puede usar: es la pausa.', 16, UI.suave).setOrigin(0.5);
+    texto(this, 640, 88, 'Toca una casilla y presiona la tecla nueva (Esc cancela; Esc es la pausa y no se puede usar).\n'
+      + 'Probador: mantengan apretadas sus teclas al mismo tiempo. Las que se encienden en verde, el teclado sí las detecta.\n'
+      + 'Si una no se enciende mientras aprietan otras, cámbienla por otra tecla.', 15, UI.suave, { align: 'center', lineSpacing: 4 }).setOrigin(0.5);
 
     const perfiles = Guardado.leer().perfiles;
     perfiles.forEach((p, i) => {
-      texto(this, COLUMNAS[i], 112, `Jugador ${i + 1} · ${p.nombre}`, 17, COLORES_JUGADOR[p.color]?.css ?? UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
+      texto(this, COLUMNAS[i], 144, `Jugador ${i + 1} · ${p.nombre}`, 17, COLORES_JUGADOR[p.color]?.css ?? UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
     });
     this.botones = [[], []];
     ACCIONES.forEach(([accion, nombre], f) => {
-      const y = 148 + f * 42;
+      const y = 176 + f * 40;
       texto(this, 380, y, nombre, 19, UI.suave).setOrigin(0, 0.5);
       for (let i = 0; i < 2; i++) {
         const b = boton(this, COLUMNAS[i], y, '', () => this.elegir(i, accion), { ancho: 190, alto: 34, tam: 17, color: UI.gris });
@@ -82,11 +84,25 @@ export class Teclas extends Phaser.Scene {
 
   refrescar() {
     const t = [teclasDe(0), teclasDe(1)];
-    this.botones.forEach((lista, i) => lista.forEach(({ accion, b }) => {
+    // Teclas "vivas" para el probador (sin bloquear nada del navegador)
+    this.input.keyboard.removeAllKeys(true);
+    this.botones.forEach((lista, i) => lista.forEach((celda) => {
+      const { accion, b } = celda;
       const activa = this.esperando && this.esperando.i === i && this.esperando.accion === accion;
       b.etiqueta.setText(activa ? 'Presiona una tecla…' : nombreTecla(t[i][accion]));
       b.fondo.setFillStyle(activa ? UI.azul : UI.gris);
+      celda.activa = activa;
+      celda.tecla = this.input.keyboard.addKey(t[i][accion], false);
     }));
+  }
+
+  update() {
+    for (const lista of this.botones) {
+      for (const celda of lista) {
+        if (celda.activa || !celda.tecla) continue;
+        celda.b.fondo.setFillStyle(celda.tecla.isDown ? 0x1f8a52 : UI.gris);
+      }
+    }
   }
 
   restaurar() {
