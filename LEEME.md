@@ -3,6 +3,8 @@
 Duelo 2D para dos: botín, zona que se cierra, pared de gel y airdrop. Rondas de 60 a 90 segundos, al mejor de 5.
 Hecho con Phaser 4 y JavaScript.
 
+**Jugar ahora:** https://sebaske12.github.io/zona-1v1/
+
 ## Cómo abrirlo
 
 - **Doble clic en `Jugar.bat`** (o en el acceso "Zona 1v1" del escritorio). Se abre el navegador solo.
