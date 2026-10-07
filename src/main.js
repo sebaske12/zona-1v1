@@ -25,7 +25,9 @@ const config = {
   // Las caras (256 × 256) se ven suaves y nítidas aunque se dibujen pequeñas
   render: { mipmapFilter: 'LINEAR_MIPMAP_LINEAR' },
   scale: {
-    mode: Phaser.Scale.FIT,    // se ajusta a la ventana sin deformarse
+    // Llena toda la pantalla: si es más ancha que 16:9 (como un iPhone en horizontal), el juego se
+    // estira a lo ancho en vez de dejar franjas negras. Siempre se ve al menos el área de 1280 × 720.
+    mode: Phaser.Scale.EXPAND,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   dom: { createContainer: true }, // para los campos de texto (nombres y apuestas)

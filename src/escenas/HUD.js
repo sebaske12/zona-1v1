@@ -1,6 +1,8 @@
 // Interfaz encima de la ronda: marcador, tiempo, avisos, paneles de cada jugador,
 // flechas hacia lo que está fuera de pantalla y aviso de poca vida.
 // Va en una escena aparte para que no tiemble con la sacudida ni se agrande con el zoom.
+// La pantalla puede ser más ancha que 1280 (por ejemplo, un iPhone en horizontal):
+// los paneles y los botones se pegan a los bordes reales, y lo del centro queda en el centro.
 import Phaser from 'phaser';
 import { FUENTE, UI, CENTRO, colorVida } from '../config.js';
 import { ARMAS, CHALECO } from '../datos/armas.js';
@@ -9,7 +11,7 @@ import { esTactil } from '../entrada/entradas.js';
 import { resumenTeclas } from '../entrada/Teclado.js';
 import { conCara } from '../sistemas/Caras.js';
 import { boton } from '../ui/ui.js';
-import { BOTON_PAUSA } from '../entrada/Tactil.js';
+import { zonasTactiles } from '../entrada/Tactil.js';
 
 const estilo = (tam, color = '#e7eaf2') => ({ fontFamily: FUENTE, fontSize: `${Math.round(tam)}px`, color, fontStyle: 'bold' });
 const css = (color) => `#${color.toString(16).padStart(6, '0')}`;
@@ -21,46 +23,74 @@ export class HUD extends Phaser.Scene {
 
   init(data) {
     this.claveRonda = data?.ronda || 'Ronda'; // Ronda, RondaEnLinea o RondaInvitado
+    this.menuAbierto = !!data?.menuAbierto; // (al reacomodar la pantalla, el menú de pausa sigue abierto)
   }
 
   create() {
     this.ronda = this.scene.get(this.claveRonda);
     const r = this.ronda;
     this.tactil = esTactil(this);
+    // Tamaño real de la pantalla del juego
+    this.W = this.scale.width;
+    this.H = this.scale.height;
+    this.cx = this.W / 2;
+    this.cy = this.H / 2;
+    const cx = this.cx;
     const f = (this.f = this.tactil ? 1.3 : 1); // en el celular todo un poco más grande
     this.tamPanel = { ancho: Math.round(260 * f), alto: Math.round(84 * f) };
 
     this.g = this.add.graphics();
     this.gFlechas = this.add.graphics();
-    this.nombreIzq = this.add.text(600, 12, r.jugadores[0].nombre, estilo(20 * f, r.jugadores[0].colorCss)).setOrigin(1, 0).setStroke('#0d111d', 5);
-    this.puntaje = this.add.text(640, 6, '', estilo(32 * f)).setOrigin(0.5, 0).setStroke('#0d111d', 6);
-    this.nombreDer = this.add.text(680, 12, r.jugadores[1].nombre, estilo(20 * f, r.jugadores[1].colorCss)).setOrigin(0, 0).setStroke('#0d111d', 5);
-    this.info = this.add.text(640, 8 + 40 * f, '', estilo(15 * f, '#9ba4ba')).setOrigin(0.5, 0).setStroke('#0d111d', 4);
-    this.aviso = this.add.text(640, 58 + 44 * f, '', estilo(24 * f)).setOrigin(0.5).setStroke('#0d111d', 6);
-    this.grande = this.add.text(640, 320, '', estilo(76 * f)).setOrigin(0.5).setStroke('#0d111d', 12);
-    this.textoPausa = this.add.text(640, 360, '', { ...estilo(26), align: 'center' }).setOrigin(0.5).setStroke('#0d111d', 6);
+    this.nombreIzq = this.add.text(cx - 40, 12, r.jugadores[0].nombre, estilo(20 * f, r.jugadores[0].colorCss)).setOrigin(1, 0).setStroke('#0d111d', 5);
+    this.puntaje = this.add.text(cx, 6, '', estilo(32 * f)).setOrigin(0.5, 0).setStroke('#0d111d', 6);
+    this.nombreDer = this.add.text(cx + 40, 12, r.jugadores[1].nombre, estilo(20 * f, r.jugadores[1].colorCss)).setOrigin(0, 0).setStroke('#0d111d', 5);
+    this.info = this.add.text(cx, 8 + 40 * f, '', estilo(15 * f, '#9ba4ba')).setOrigin(0.5, 0).setStroke('#0d111d', 4);
+    this.aviso = this.add.text(cx, 58 + 44 * f, '', estilo(24 * f)).setOrigin(0.5).setStroke('#0d111d', 6);
+    this.grande = this.add.text(cx, this.cy - 40, '', estilo(76 * f)).setOrigin(0.5).setStroke('#0d111d', 12);
+    this.textoPausa = this.add.text(cx, this.cy, '', { ...estilo(26), align: 'center' }).setOrigin(0.5).setStroke('#0d111d', 6);
     this.paneles = r.jugadores.map((j, i) => this.crearPanel(j, i));
     this.etiquetasFlechas = [0, 1, 2].map(() => this.add.text(0, 0, '', estilo(14 * f)).setOrigin(0.5).setStroke('#0d111d', 4).setVisible(false));
     this.crearAyudas();
     // En línea: el ping y por dónde va la conexión, abajo al centro
     this.red = this.claveRonda !== 'Ronda' ? this.registry.get('red') : null;
-    this.senal = this.add.text(640, this.tactil ? 652 : 714, '', estilo(13 * f, '#9ba4ba')).setOrigin(0.5, 1).setStroke('#0d111d', 4);
+    this.senal = this.add.text(cx, this.tactil ? this.H - 68 : this.H - 6, '', estilo(13 * f, '#9ba4ba')).setOrigin(0.5, 1).setStroke('#0d111d', 4);
     this.proximaSenal = 0;
     r.menuTactil = false; // (la ronda se reutiliza: que no quede abierto de la vez anterior)
     if (this.tactil) this.crearMenuTactil();
+
+    // Si cambia el tamaño de la pantalla (girar, barra de Safari…), se vuelve a armar el HUD
+    this.alCambiarTamano = () => {
+      clearTimeout(this.esperaTamano);
+      this.esperaTamano = setTimeout(() => {
+        if (this.sys.isActive() && (this.scale.width !== this.W || this.scale.height !== this.H)) {
+          this.scene.restart({ ronda: this.claveRonda, menuAbierto: !!this.menu?.visible });
+        }
+      }, 150);
+    };
+    this.scale.on('resize', this.alCambiarTamano);
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', this.alCambiarTamano);
+      clearTimeout(this.esperaTamano);
+    });
   }
 
   // En el celular no hay tecla Esc: un botón ⏸ para pausar (o salir, si es en línea)
   crearMenuTactil() {
     const enLinea = this.claveRonda !== 'Ronda';
-    this.btnPausa = boton(this, BOTON_PAUSA.x, BOTON_PAUSA.y, '⏸', () => this.abrirMenu(), { ancho: 56, alto: 44, tam: 22, color: UI.gris });
+    const { cx, cy } = this;
+    const pausa = zonasTactiles(this).pausa;
+    this.btnPausa = boton(this, pausa.x, pausa.y, '⏸', () => this.abrirMenu(), { ancho: 56, alto: 44, tam: 22, color: UI.gris });
     this.btnPausa.setAlpha(0.85);
-    const fondo = this.add.rectangle(640, 360, 1280, 720, 0x0d111d, 0.72).setInteractive();
-    const titulo = this.add.text(640, 262, enLinea ? '¿Salir de la partida?' : 'PAUSA', estilo(38)).setOrigin(0.5).setStroke('#0d111d', 6);
-    const sub = this.add.text(640, 316, enLinea ? 'La ronda sigue mientras decides. Si sales, la partida se termina para los dos.' : 'El juego está en pausa.', estilo(17, '#9ba4ba')).setOrigin(0.5);
-    const seguir = boton(this, 500, 410, enLinea ? 'Seguir jugando' : 'Seguir', () => this.cerrarMenu(), { ancho: 250, color: UI.azul });
-    const salir = boton(this, 790, 410, 'Salir al menú', () => this.salirAlMenu(), { ancho: 250, color: UI.rojo });
+    const fondo = this.add.rectangle(cx, cy, this.W, this.H, 0x0d111d, 0.72).setInteractive();
+    const titulo = this.add.text(cx, cy - 98, enLinea ? '¿Salir de la partida?' : 'PAUSA', estilo(38)).setOrigin(0.5).setStroke('#0d111d', 6);
+    const sub = this.add.text(cx, cy - 44, enLinea ? 'La ronda sigue mientras decides. Si sales, la partida se termina para los dos.' : 'El juego está en pausa.', estilo(17, '#9ba4ba')).setOrigin(0.5);
+    const seguir = boton(this, cx - 145, cy + 50, enLinea ? 'Seguir jugando' : 'Seguir', () => this.cerrarMenu(), { ancho: 250, color: UI.azul });
+    const salir = boton(this, cx + 145, cy + 50, 'Salir al menú', () => this.salirAlMenu(), { ancho: 250, color: UI.rojo });
     this.menu = this.add.container(0, 0, [fondo, titulo, sub, seguir, salir]).setDepth(90).setVisible(false);
+    if (this.menuAbierto) {
+      this.menu.setVisible(true);
+      this.ronda.menuTactil = true;
+    }
   }
 
   abrirMenu() {
@@ -114,7 +144,7 @@ export class HUD extends Phaser.Scene {
       .setOrigin(0.5, 0).setStroke('#0d111d', 4);
     this.ayudas = [];
     if (this.tactil) {
-      this.ayudas.push(ayuda(640, 400, 'Joystick izquierdo: moverte · Toca la mitad derecha: apuntar y disparar\nRodar esquiva las balas · Usar: botiquín, granada o pared de gel'));
+      this.ayudas.push(ayuda(this.cx, this.cy + 40, 'Joystick izquierdo: moverte · Toca la mitad derecha: apuntar y disparar\nRodar esquiva las balas · Usar: botiquín, granada o pared de gel'));
       return;
     }
     // Abajo, en la esquina de cada jugador (arriba taparían al jugador 1, que empieza bajo su panel)
@@ -123,7 +153,7 @@ export class HUD extends Phaser.Scene {
       if (r.partida.bot && i === 1) return;
       if (enLinea && i !== r.indiceLocal) return;
       const teclas = resumenTeclas(enLinea ? 0 : i) + (enLinea ? '\nRatón: apunta · Clic: dispara' : '');
-      this.ayudas.push(ayuda(panel.x + panel.ancho / 2, 640, teclas));
+      this.ayudas.push(ayuda(panel.x + panel.ancho / 2, this.H - 80, teclas));
     });
   }
 
@@ -133,7 +163,7 @@ export class HUD extends Phaser.Scene {
     const perfil = this.ronda.partida.perfiles[j.indice];
     const extra = perfil?.cara ? Math.round(52 * f) : 0;
     const ancho = this.tamPanel.ancho + extra;
-    const x = i === 0 ? 12 : 1280 - 12 - ancho;
+    const x = i === 0 ? 12 : this.W - 12 - ancho;
     const y = 10;
     const izq = x + extra; // donde empieza lo demás
     let cara = null;
@@ -169,11 +199,12 @@ export class HUD extends Phaser.Scene {
     if (!r || !r.jugadores) return;
     const p = r.partida;
     const g = this.g;
+    const { W, H, cx } = this;
     g.clear();
 
     this.puntaje.setText(`${p.rondas[0]} – ${p.rondas[1]}`);
-    this.nombreIzq.x = 640 - this.puntaje.width / 2 - 14;
-    this.nombreDer.x = 640 + this.puntaje.width / 2 + 14;
+    this.nombreIzq.x = cx - this.puntaje.width / 2 - 14;
+    this.nombreDer.x = cx + this.puntaje.width / 2 + 14;
     // Con nombres largos (y caras en los paneles) el nombre se achica para no taparlos
     const [pi, pd] = this.paneles;
     const libreIzq = this.nombreIzq.x - (pi.x + pi.ancho + 10);
@@ -212,14 +243,14 @@ export class HUD extends Phaser.Scene {
     if (r.pausado && this.tactil) {
       this.textoPausa.setText(''); // en el celular se ve el menú de pausa con botones
     } else if (r.pausado) {
-      g.fillStyle(0x0d111d, 0.65).fillRect(0, 0, 1280, 720);
+      g.fillStyle(0x0d111d, 0.65).fillRect(0, 0, W, H);
       this.textoPausa.setText('PAUSA\n\nEsc para seguir · M para ir al menú');
     } else if (red && red.parejaAusente) {
       // Tu pareja salió de la app (por ejemplo, a contestar un mensaje): la ronda espera
-      g.fillStyle(0x0d111d, 0.6).fillRect(0, 0, 1280, 720);
+      g.fillStyle(0x0d111d, 0.6).fillRect(0, 0, W, H);
       this.textoPausa.setText('⏸ Tu pareja salió de la app\n\nLa ronda sigue cuando vuelva');
     } else if (red && red.silencio > 1500) {
-      g.fillStyle(0x0d111d, 0.45).fillRect(0, 0, 1280, 720);
+      g.fillStyle(0x0d111d, 0.45).fillRect(0, 0, W, H);
       this.textoPausa.setText('📶 Esperando a tu pareja…\n\nLa conexión está lenta');
     } else {
       this.textoPausa.setText('');
@@ -233,7 +264,7 @@ export class HUD extends Phaser.Scene {
     const yo = r.jugadores[r.indiceLocal];
     if (!yo || !yo.vivo || yo.vida / yo.vidaMax >= 0.3 || r.estado !== 'jugando') return;
     const alfa = 0.22 + 0.18 * Math.sin(this.game.loop.time / 140);
-    g.lineStyle(34 * this.f, 0xff3b30, alfa).strokeRect(0, 0, 1280, 720);
+    g.lineStyle(34 * this.f, 0xff3b30, alfa).strokeRect(0, 0, this.W, this.H);
   }
 
   // Flechas en el borde de la pantalla hacia el rival, el airdrop o la zona cuando no se ven
@@ -251,21 +282,21 @@ export class HUD extends Phaser.Scene {
     const airdrop = (r.cajas || []).find((c) => c.airdrop && !c.abierta);
     if (airdrop) objetivos.push({ x: airdrop.x, y: airdrop.y, color: 0xf2b544, texto: 'Airdrop' });
     if (yo && yo.fueraDeZona) objetivos.push({ x: CENTRO.x, y: CENTRO.y, color: 0x7ea0ff, texto: 'Zona' });
-    const f = this.f;
+    const { cx, cy, f } = this;
     const margen = 52 * f;
     const arriba = this.tamPanel.alto + 46; // las flechas no se meten debajo de los paneles de arriba
-    const abajo = this.tactil ? 430 : 720 - margen; // ni encima de los joysticks y botones del celular
+    const abajo = this.tactil ? cy + 70 : this.H - margen; // ni encima de los joysticks y botones del celular
     objetivos.forEach((o, k) => {
       if (cam.worldView.contains(o.x, o.y)) return;
       const s = this.aPantalla(o.x, o.y);
-      const a = Math.atan2(s.y - 360, s.x - 640);
+      const a = Math.atan2(s.y - cy, s.x - cx);
       const seno = Math.sin(a);
       const t = Math.min(
-        (640 - margen) / Math.max(1e-6, Math.abs(Math.cos(a))),
-        seno > 0 ? (abajo - 360) / Math.max(1e-6, seno) : (360 - arriba) / Math.max(1e-6, -seno),
+        (cx - margen) / Math.max(1e-6, Math.abs(Math.cos(a))),
+        seno > 0 ? (abajo - cy) / Math.max(1e-6, seno) : (cy - arriba) / Math.max(1e-6, -seno),
       );
-      const px = 640 + Math.cos(a) * t;
-      const py = 360 + seno * t;
+      const px = cx + Math.cos(a) * t;
+      const py = cy + seno * t;
       const tam = 17 * f;
       g.fillStyle(0x0d111d, 0.7).fillCircle(px, py, tam + 4);
       g.fillStyle(o.color, 0.95).fillTriangle(

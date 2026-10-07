@@ -67,6 +67,10 @@ Después, cada uno abre el link `https://TU-USUARIO.github.io/zona-1v1/` y usa *
 - **Si alguien sale de la app** (por ejemplo, a contestar un mensaje): la ronda se pausa para los dos con el aviso
   "Tu pareja salió de la app" y espera hasta 45 segundos a que vuelva.
 - **Botón ⏸ en el celular** (abajo al centro): en el entrenamiento pausa el juego; en línea pregunta si quieres salir.
+- **Llena toda la pantalla (versión 1.6):** en un iPhone en horizontal (más ancho que un PC), en un iPad o en una ventana
+  ancha, el juego se estira y no deja franjas negras. Los paneles y los botones van pegados a los bordes, y nada queda
+  debajo de la muesca ni de la rayita de abajo del iPhone. Para que se vea aún más grande, ábranlo desde la pantalla de inicio
+  (Safari → Compartir → "Agregar a pantalla de inicio"), así no ocupa espacio la barra de Safari.
 - **En el celular** la cámara sigue a tu jugador con zoom, y unas flechas en el borde señalan al rival, al airdrop y a la zona.
 - **Actualizaciones:** cuando se publica una versión nueva, el menú muestra "¡Hay una versión nueva!" para actualizar con un toque.
   La versión está abajo a la derecha del menú.

@@ -12,6 +12,7 @@ import { crearEntradasLocales, esTactil } from '../entrada/entradas.js';
 import { EntradaBot } from '../entrada/Bot.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { Musica } from '../sistemas/Musica.js';
+import { centrarVista } from '../ui/ui.js';
 
 const CUENTA = 2.4; // segundos de "3, 2, 1"
 
@@ -99,6 +100,10 @@ export class Ronda extends Phaser.Scene {
       cam.setZoom(ZOOM_CELULAR);
       cam.startFollow(propio.sprite, false, 0.15, 0.15);
       cam.centerOn(propio.x, propio.y);
+    } else {
+      // Si la ventana es más ancha que el mapa, el mapa queda en el centro
+      // (al final de la ronda la cámara se acerca al que cayó: ahí no se toca)
+      centrarVista(this, () => this.estado !== 'final');
     }
   }
 
@@ -112,6 +117,8 @@ export class Ronda extends Phaser.Scene {
   // ---------- Construcción ----------
 
   crearMapa() {
+    // Afuera del mapa: un piso oscuro (en pantallas anchas o con la cámara en el borde se ve un poco)
+    this.add.tileSprite(-1000, -700, ANCHO + 2000, ALTO + 1400, 'piso').setOrigin(0).setDepth(-1).setTint(0x4a5068).setAlpha(0.45);
     this.add.tileSprite(0, 0, ANCHO, ALTO, 'piso').setOrigin(0).setDepth(0);
     this.aguas = this.mapa.agua.map(([x, y, w, h]) => {
       this.add.tileSprite(x, y, w, h, 'agua').setOrigin(0).setDepth(1).setAlpha(0.9);

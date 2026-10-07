@@ -37,9 +37,22 @@ export function mostrarCara(escena, imagen, anillo, cara, color, tam) {
   });
 }
 
+// Fondo de los menús. Es más grande que 1280 × 720 para que llene pantallas más anchas,
+// y la vista se centra en el contenido.
 export function fondoMenu(escena) {
-  escena.add.tileSprite(0, 0, ANCHO, ALTO, 'piso').setOrigin(0);
-  escena.add.rectangle(ANCHO / 2, ALTO / 2, ANCHO, ALTO, UI.fondo, 0.6);
+  escena.add.tileSprite(-1000, -600, ANCHO + 2000, ALTO + 1200, 'piso').setOrigin(0);
+  escena.add.rectangle(ANCHO / 2, ALTO / 2, ANCHO + 2000, ALTO + 1200, UI.fondo, 0.6);
+  centrarVista(escena);
+}
+
+// La pantalla puede ser más ancha (o más alta) que 1280 × 720, por ejemplo en un iPhone:
+// el contenido queda en el centro, también si la pantalla cambia de tamaño
+export function centrarVista(escena, siempre = () => true) {
+  const cam = escena.cameras.main;
+  const centrar = () => { if (siempre()) cam.centerOn(ANCHO / 2, ALTO / 2); };
+  centrar();
+  escena.scale.on('resize', centrar);
+  escena.events.once('shutdown', () => escena.scale.off('resize', centrar));
 }
 
 // Círculo punteado como el borde de la zona

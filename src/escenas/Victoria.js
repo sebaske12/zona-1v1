@@ -38,7 +38,7 @@ export class Victoria extends Phaser.Scene {
 
     fondoMenu(this);
     const confeti = this.add.particles(0, -10, 'chispa', {
-      x: { min: 0, max: 1280 }, speedY: { min: 120, max: 260 }, speedX: { min: -40, max: 40 },
+      x: { min: -400, max: 1680 }, speedY: { min: 120, max: 260 }, speedX: { min: -40, max: 40 },
       lifespan: 4000, scale: { min: 1.2, max: 2.4 }, rotate: { min: 0, max: 360 },
       tint: [cg.valor, 0xf2b544, 0xffffff], frequency: 25, quantity: 2,
     });
