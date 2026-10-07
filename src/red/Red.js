@@ -6,6 +6,10 @@ const PREFIJO = 'zona1v1-sala-';
 const LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin O, 0, I ni 1 para que no se confundan
 const TAM_TROZO = 7000; // caracteres por trozo (con tildes ocupa más bytes; así nunca pasa de 16 KB)
 
+export function sortearCodigo() {
+  return Array.from({ length: 4 }, () => LETRAS[Math.floor(Math.random() * LETRAS.length)]).join('');
+}
+
 function mensajeError(e) {
   switch (e?.type) {
     case 'peer-unavailable': return 'No existe una sala con ese código. Revisa las letras.';
@@ -47,7 +51,7 @@ export class Red {
 
   crear({ alListo, alUnirse, alError }) {
     this.esAnfitrion = true;
-    this.codigo = Array.from({ length: 4 }, () => LETRAS[Math.floor(Math.random() * LETRAS.length)]).join('');
+    this.codigo = sortearCodigo();
     this.peer = new Peer(PREFIJO + this.codigo, { debug: 0 });
     this.peer.on('open', () => alListo(this.codigo));
     this.peer.on('connection', (conn) => {
@@ -73,7 +77,7 @@ export class Red {
     this.codigo = codigo.trim().toUpperCase();
     this.peer = new Peer({ debug: 0 });
     const limite = setTimeout(() => {
-      if (!this.conn?.open) alError('No se pudo conectar. Prueben en el mismo WiFi o intenten de nuevo.');
+      if (!this.conn?.open) alError('No se pudo conectar. Con datos móviles la conexión directa suele fallar: prueben los dos en WiFi.');
     }, 15000);
     this.peer.on('open', () => {
       const conn = this.peer.connect(PREFIJO + this.codigo, { reliable: true, serialization: 'json' });
@@ -95,16 +99,27 @@ export class Red {
     conn.on('close', () => this.perdida());
     // Un error suelto (por ejemplo, un mensaje rechazado) no corta la partida: de eso se encarga el latido
     conn.on('error', (e) => console.warn('Zona 1v1 · error de conexión:', e?.type || e));
-    // Latido: si en 8 s no llega nada del otro aparato, se da por perdida la conexión
-    // (cuando alguien cierra el navegador, WebRTC puede tardar mucho en avisar)
+    this.iniciarLatido();
+  }
+
+  conectada() {
+    return !!(this.conn && this.conn.open);
+  }
+
+  // Latido: si en 8 s no llega nada del otro aparato, se da por perdida la conexión
+  // (cuando alguien cierra el navegador o se queda sin señal, puede tardar mucho en avisar)
+  iniciarLatido() {
     this.ultimoMensaje = performance.now();
+    clearInterval(this.latido);
     this.latido = setInterval(() => {
-      if (!this.conn) return;
-      if (this.conn.open) this.enviar('latido');
+      if (this.cerrando) return;
+      if (this.conectada()) this.enviar('latido');
       if (performance.now() - this.ultimoMensaje > 8000) this.perdida();
     }, 1000);
-    this.alSalir = () => this.cerrar();
-    window.addEventListener('pagehide', this.alSalir);
+    if (!this.alSalir) {
+      this.alSalir = () => this.cerrar();
+      window.addEventListener('pagehide', this.alSalir);
+    }
   }
 
   recibir(m) {

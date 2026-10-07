@@ -1,0 +1,10 @@
+{
+  // Servidor de salas de Zona 1v1. Se publica con: npx wrangler deploy
+  "name": "zona1v1-salas",
+  "main": "src/index.js",
+  "compatibility_date": "2025-06-01",
+  "durable_objects": {
+    "bindings": [{ "name": "SALAS", "class_name": "Sala" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Sala"] }]
+}

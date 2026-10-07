@@ -5,7 +5,7 @@ import { MAPAS, ORDEN_MAPAS } from '../datos/mapas.js';
 import { MODOS, ORDEN_MODOS } from '../datos/modos.js';
 import { Guardado } from '../sistemas/Guardado.js';
 import { nuevaPartida } from '../sistemas/Partida.js';
-import { Red } from '../red/Red.js';
+import { crearRed } from '../red/conexion.js';
 import { caraValida, sinCaras } from '../sistemas/Caras.js';
 import { elegirFoto } from '../ui/Foto.js';
 import { mostrarCara } from '../ui/ui.js';
@@ -137,7 +137,7 @@ export class Sala extends Phaser.Scene {
     this.estado = 'creando';
     this.ocupado(true);
     this.estadoTexto.setText('Creando la sala…');
-    this.red = new Red(this.game);
+    this.red = crearRed(this.game);
     this.red.manejador = (t, d) => { if (t === 'hola') this.empezarComoAnfitrion(d); };
     this.red.crear({
       alListo: (codigo) => {
@@ -184,7 +184,7 @@ export class Sala extends Phaser.Scene {
     this.estado = 'uniendo';
     this.ocupado(true);
     this.estadoTexto.setText(`Conectando a la sala ${codigo}…`);
-    this.red = new Red(this.game);
+    this.red = crearRed(this.game);
     this.red.manejador = (t, d) => {
       if (t === 'hola') this.caraAnfitrion = caraValida(d?.perfil?.cara); // la cara de tu pareja
       if (t === 'inicio') {
