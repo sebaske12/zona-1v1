@@ -11,6 +11,9 @@ import { Ronda } from './escenas/Ronda.js';
 import { HUD } from './escenas/HUD.js';
 import { Ventajas } from './escenas/Ventajas.js';
 import { Victoria } from './escenas/Victoria.js';
+import { Sala } from './escenas/Sala.js';
+import { RondaEnLinea } from './escenas/RondaEnLinea.js';
+import { RondaInvitado } from './escenas/RondaInvitado.js';
 
 const config = {
   type: Phaser.AUTO,           // WebGL si se puede; si no, Canvas
@@ -23,13 +26,13 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   dom: { createContainer: true }, // para los campos de texto (nombres y apuestas)
-  input: { gamepad: true },       // controles de PS / Xbox
+  input: { gamepad: true, activePointers: 4 }, // controles de PS / Xbox y varios dedos a la vez
   physics: {
     default: 'arcade',
     arcade: { debug: false },     // ponlo en true para ver las cajas de choque
   },
-  // El orden importa: el HUD va después de la Ronda para dibujarse encima
-  scene: [Arranque, Menu, Preparacion, Historial, Ajustes, Ronda, HUD, Ventajas, Victoria],
+  // El orden importa: el HUD va después de las rondas para dibujarse encima
+  scene: [Arranque, Menu, Preparacion, Historial, Ajustes, Sala, Ronda, RondaEnLinea, RondaInvitado, HUD, Ventajas, Victoria],
 };
 
 // iOS y los navegadores solo dejan sonar después del primer toque o tecla

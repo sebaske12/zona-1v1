@@ -2,7 +2,7 @@
 // y el otro no ve sus cartas hasta que le toca (plan, sección 1.4).
 import Phaser from 'phaser';
 import { COLORES_JUGADOR, UI } from '../config.js';
-import { VENTAJAS, MAX_VENTAJAS } from '../datos/ventajas.js';
+import { VENTAJAS, MAX_VENTAJAS, sortearOpciones } from '../datos/ventajas.js';
 import { indiceDeControl } from '../entrada/entradas.js';
 import { Sonido } from '../sistemas/Sonido.js';
 import { texto, fondoMenu } from '../ui/ui.js';
@@ -18,12 +18,20 @@ export class Ventajas extends Phaser.Scene {
   init(data) {
     this.perdedor = data.perdedor ?? 0;
     this.remoto = data.remoto ?? null; // en línea: qué jugador está en el otro aparato
+    this.opcionesDadas = data.opciones ?? null; // en línea las sortea el anfitrión
+    this.siguiente = data.siguiente ?? 'Ronda';
   }
 
   create() {
     this.partida = this.registry.get('partida');
     this.terminado = false;
     const p = this.partida;
+    this.sorteo = this.opcionesDadas || sortearOpciones(p);
+    this.red = this.remoto !== null ? this.registry.get('red') : null;
+    if (this.red) {
+      this.red.manejador = (t, d) => { if (t === 'elegida') this.elegir(d.i, null, d.id); };
+      this.events.once('shutdown', () => { if (this.red) this.red.manejador = null; });
+    }
     fondoMenu(this);
     texto(this, 640, 40, `Marcador ${p.rondas[0]} – ${p.rondas[1]}`, 40, UI.texto, { fontStyle: 'bold' }).setOrigin(0.5);
     texto(this, 640, 86, `${p.perfiles[this.perdedor].nombre} perdió la ronda y elige primero. Las ventajas duran toda la partida.`, 18, UI.suave).setOrigin(0.5);
@@ -46,7 +54,7 @@ export class Ventajas extends Phaser.Scene {
     const p = this.partida;
     const color = COLORES_JUGADOR[p.perfiles[i].color];
     const tiene = p.ventajas[i];
-    const opciones = Phaser.Utils.Array.Shuffle(VENTAJAS.filter((v) => !tiene.includes(v.id))).slice(0, 3);
+    const opciones = (this.sorteo[i] || []).map((id) => VENTAJAS.find((v) => v.id === id)).filter(Boolean);
     const lado = { i, cx, color, opciones, sel: Math.min(1, opciones.length - 1), elegida: null, cartas: [] };
     lado.listo = tiene.length >= MAX_VENTAJAS || opciones.length === 0;
 
@@ -141,15 +149,18 @@ export class Ventajas extends Phaser.Scene {
     return r;
   }
 
-  elegir(i, indiceCarta = null) {
+  // id: cuando la elección llega por la red desde el otro aparato
+  elegir(i, indiceCarta = null, id = null) {
     const lado = this.lados[i];
-    if (lado.listo || this.turno !== i) return;
-    if (indiceCarta !== null) lado.sel = indiceCarta;
+    if (!lado || lado.listo || this.turno !== i) return;
+    if (id !== null) indiceCarta = lado.opciones.findIndex((v) => v.id === id);
+    if (indiceCarta !== null && indiceCarta >= 0) lado.sel = indiceCarta;
     lado.elegida = lado.sel;
     lado.listo = true;
-    this.partida.ventajas[i].push(lado.opciones[lado.sel].id);
+    const elegidaId = lado.opciones[lado.sel].id;
+    this.partida.ventajas[i].push(elegidaId);
     Sonido.tocar('recoger');
-    this.events.emit('elegida', i, lado.opciones[lado.sel].id);
+    if (this.red && this.esLocal(i)) this.red.enviar('elegida', { i, id: elegidaId });
     if (!this.lados[1 - i].listo) this.turno = 1 - i;
     this.refrescar();
     if (this.lados.every((l) => l.listo)) this.terminar();
@@ -158,10 +169,9 @@ export class Ventajas extends Phaser.Scene {
   terminar() {
     if (this.terminado) return;
     this.terminado = true;
-    this.events.emit('terminado');
     this.time.delayedCall(900, () => {
       this.cameras.main.fadeOut(250, 13, 17, 29);
-      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(this.remoto === null ? 'Ronda' : 'RondaEnLinea'));
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(this.siguiente));
     });
   }
 }

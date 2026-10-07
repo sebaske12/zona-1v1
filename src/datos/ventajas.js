@@ -14,6 +14,20 @@ export const VENTAJAS = [
 
 export const MAX_VENTAJAS = 4;
 
+// Las 3 cartas que le salen a cada jugador (sin repetir las que ya tiene)
+export function sortearOpciones(partida) {
+  return [0, 1].map((i) => {
+    const tiene = partida.ventajas[i];
+    if (tiene.length >= MAX_VENTAJAS) return [];
+    const libres = VENTAJAS.filter((v) => !tiene.includes(v.id)).map((v) => v.id);
+    for (let k = libres.length - 1; k > 0; k--) {
+      const r = Math.floor(Math.random() * (k + 1));
+      [libres[k], libres[r]] = [libres[r], libres[k]];
+    }
+    return libres.slice(0, 3);
+  });
+}
+
 // Estadísticas del jugador i en esta ronda: hándicap + sus ventajas
 export function statsDeJugador(partida, i) {
   const s = {

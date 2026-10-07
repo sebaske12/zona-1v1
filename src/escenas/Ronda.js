@@ -15,8 +15,8 @@ const CUENTA = 2.4; // segundos de "3, 2, 1"
 const CAMARA_LENTA = { escala: 0.3, dura: 1.6 };
 
 export class Ronda extends Phaser.Scene {
-  constructor() {
-    super('Ronda');
+  constructor(clave = 'Ronda') {
+    super(clave); // RondaEnLinea y RondaInvitado reutilizan esta clase con otro nombre
   }
 
   create() {
@@ -61,11 +61,11 @@ export class Ronda extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', () => this.alternarPausa());
     this.input.keyboard.on('keydown-M', () => { if (this.pausado) this.scene.start('Menu'); });
 
-    this.scene.launch('HUD');
+    this.scene.launch('HUD', { ronda: this.scene.key });
     this.cameras.main.fadeIn(250, 13, 17, 29);
   }
 
-  // Se puede reemplazar para el modo en línea
+  // RondaEnLinea la reemplaza: allá el jugador 2 llega por la red
   crearEntradas() {
     return crearEntradasLocales(this);
   }
@@ -434,9 +434,7 @@ export class Ronda extends Phaser.Scene {
 
   dispararRayo(j, angulo, d, bx, by) {
     const imp = this.impactoRayo(j.x, j.y, angulo, j.alcance, j);
-    const trazo = this.add.graphics().setDepth(12);
-    trazo.lineStyle(3, 0xfff3b0, 1).lineBetween(bx, by, imp.x, imp.y);
-    this.tweens.add({ targets: trazo, alpha: 0, duration: 260, onComplete: () => trazo.destroy() });
+    this.trazo(bx, by, imp.x, imp.y);
     this.fxChispas.explode(8, imp.x, imp.y);
     if (imp.jugador) this.aplicarDano(imp.jugador, d.dano, j, j.arma, imp.x, imp.y);
     else if (imp.gel) this.danarGel(imp.gel, d.dano);
@@ -548,8 +546,7 @@ export class Ronda extends Phaser.Scene {
     this.cameras.main.shake(220, 0.012);
     this.fxFuego.explode(30, x, y);
     this.fxHumo.explode(14, x, y);
-    const flash = this.add.circle(x, y, GRANADA.radio, 0xffd166, 0.45).setDepth(12);
-    this.tweens.add({ targets: flash, alpha: 0, scale: 1.3, duration: 260, onComplete: () => flash.destroy() });
+    this.destelloExplosion(x, y);
     for (const j of this.jugadores) {
       if (!j.vivo) continue;
       if (Phaser.Math.Distance.Between(x, y, j.x, j.y) <= GRANADA.radio + RADIO_JUGADOR) {
@@ -671,8 +668,24 @@ export class Ronda extends Phaser.Scene {
 
   efectoRodada(j) {
     Sonido.tocar('rodada');
-    const fantasma = this.add.image(j.x, j.y, 'cuerpo').setTint(j.color).setAlpha(0.5).setDepth(9);
-    this.tweens.add({ targets: fantasma, alpha: 0, scale: 1.3, duration: 220, onComplete: () => fantasma.destroy() });
+    this.fantasma(j);
+  }
+
+  // Los efectos solo visuales van aparte para que el modo en línea los pueda repetir
+  fantasma(j) {
+    const sombra = this.add.image(j.x, j.y, 'cuerpo').setTint(j.color).setAlpha(0.5).setDepth(9);
+    this.tweens.add({ targets: sombra, alpha: 0, scale: 1.3, duration: 220, onComplete: () => sombra.destroy() });
+  }
+
+  trazo(x1, y1, x2, y2) {
+    const g = this.add.graphics().setDepth(12);
+    g.lineStyle(3, 0xfff3b0, 1).lineBetween(x1, y1, x2, y2);
+    this.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
+  }
+
+  destelloExplosion(x, y) {
+    const flash = this.add.circle(x, y, GRANADA.radio, 0xffd166, 0.45).setDepth(12);
+    this.tweens.add({ targets: flash, alpha: 0, scale: 1.3, duration: 260, onComplete: () => flash.destroy() });
   }
 
   efectoCuracion(j) {
@@ -684,11 +697,15 @@ export class Ronda extends Phaser.Scene {
     const ahora = this.game.loop.time;
     if (ahora < j.burlaHasta) return;
     j.burlaHasta = ahora + 1200;
-    if (j.burlaTexto) j.burlaTexto.destroy();
-    j.burlaTexto = this.add.text(j.x, j.y - 60, BURLAS[n - 1], { fontSize: '34px' }).setOrigin(0.5).setDepth(22);
-    j.burlaInicio = ahora;
+    this.verBurla(j, n);
     this.partida.estadisticas[j.indice].burlas++;
     Sonido.tocar('burla');
+  }
+
+  verBurla(j, n) {
+    if (j.burlaTexto) j.burlaTexto.destroy();
+    j.burlaTexto = this.add.text(j.x, j.y - 60, BURLAS[n - 1] || BURLAS[0], { fontSize: '34px' }).setOrigin(0.5).setDepth(22);
+    j.burlaInicio = this.game.loop.time;
   }
 
   textoFlotante(x, y, contenido, color = '#ffffff', tam = 16) {

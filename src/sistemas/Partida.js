@@ -16,6 +16,17 @@ export function nuevaPartida({ perfiles, mapa, modo, vida, apuestas }) {
   };
 }
 
+// Lo que el anfitrión le manda al invitado entre rondas
+export function resumenPartida(p) {
+  return {
+    rondas: [...p.rondas],
+    numeroRonda: p.numeroRonda,
+    ventajas: p.ventajas.map((v) => [...v]),
+    estadisticas: p.estadisticas,
+    ganador: p.ganador,
+  };
+}
+
 function estadisticasVacias() {
   return { bajas: 0, bajasPorArma: {}, dano: 0, disparos: 0, aciertos: 0, rondas: 0, burlas: 0 };
 }

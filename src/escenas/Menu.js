@@ -9,10 +9,15 @@ export class Menu extends Phaser.Scene {
     super('Menu');
   }
 
+  init(data) {
+    this.aviso = data?.aviso || null; // por ejemplo, si se cayó la conexión en línea
+  }
+
   create() {
     this.input.keyboard.clearCaptures();
     const d = Guardado.leer();
     fondoMenu(this);
+    if (this.aviso) texto(this, 640, 312, this.aviso, 18, '#ff7468', { fontStyle: 'bold' }).setOrigin(0.5);
 
     const deco = this.add.graphics({ x: 640, y: 200 });
     deco.lineStyle(4, 0x7ea0ff, 0.3);

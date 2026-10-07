@@ -14,8 +14,12 @@ export class HUD extends Phaser.Scene {
     super('HUD');
   }
 
+  init(data) {
+    this.claveRonda = data?.ronda || 'Ronda'; // Ronda, RondaEnLinea o RondaInvitado
+  }
+
   create() {
-    this.ronda = this.scene.get('Ronda');
+    this.ronda = this.scene.get(this.claveRonda);
     const r = this.ronda;
     this.g = this.add.graphics();
     this.nombreIzq = this.add.text(600, 12, r.jugadores[0].nombre, estilo(20, r.jugadores[0].colorCss)).setOrigin(1, 0).setStroke('#0d111d', 5);
@@ -83,17 +87,22 @@ export class HUD extends Phaser.Scene {
   dibujarPanel(panel, g) {
     const { x, y, j } = panel;
     const alerta = j.fueraDeZona && Math.floor(this.game.loop.time / 200) % 2 === 0;
-    g.fillStyle(0x0d111d, 0.8).fillRoundedRect(x, y, PANEL.ancho, PANEL.alto, 10);
-    g.lineStyle(2, alerta ? 0xff5a4e : UI.borde, 1).strokeRoundedRect(x, y, PANEL.ancho, PANEL.alto, 10);
-    g.fillStyle(j.color, 1).fillRect(x + 4, y + 12, 3, PANEL.alto - 24);
+    // Si alguien pasa por debajo del panel, el panel se vuelve casi transparente
+    const tapa = this.ronda.jugadores.some((o) => o.x > x - 20 && o.x < x + PANEL.ancho + 20 && o.y < y + PANEL.alto + 30);
+    const alfa = tapa ? 0.35 : 1;
+    panel.nombre.setAlpha(alfa);
+    panel.arma.setAlpha(alfa);
+    g.fillStyle(0x0d111d, 0.8 * alfa).fillRoundedRect(x, y, PANEL.ancho, PANEL.alto, 10);
+    g.lineStyle(2, alerta ? 0xff5a4e : UI.borde, alfa).strokeRoundedRect(x, y, PANEL.ancho, PANEL.alto, 10);
+    g.fillStyle(j.color, alfa).fillRect(x + 4, y + 12, 3, PANEL.alto - 24);
 
     const bx = x + 14;
     const bw = PANEL.ancho - 28;
     const pv = Phaser.Math.Clamp(j.vida / j.vidaMax, 0, 1);
-    g.fillStyle(0x222a3f, 1).fillRect(bx, y + 33, bw, 12);
-    g.fillStyle(colorVida(pv), 1).fillRect(bx, y + 33, bw * pv, 12);
-    g.fillStyle(0x222a3f, 1).fillRect(bx, y + 48, bw, 5);
-    if (j.chaleco > 0) g.fillStyle(UI.chaleco, 1).fillRect(bx, y + 48, bw * (j.chaleco / CHALECO), 5);
+    g.fillStyle(0x222a3f, alfa).fillRect(bx, y + 33, bw, 12);
+    g.fillStyle(colorVida(pv), alfa).fillRect(bx, y + 33, bw * pv, 12);
+    g.fillStyle(0x222a3f, alfa).fillRect(bx, y + 48, bw, 5);
+    if (j.chaleco > 0) g.fillStyle(UI.chaleco, alfa).fillRect(bx, y + 48, bw * (j.chaleco / CHALECO), 5);
 
     const d = ARMAS[j.arma];
     let textoArma;
@@ -105,13 +114,13 @@ export class HUD extends Phaser.Scene {
     for (const ic of panel.iconos) {
       const n = j.objetos[ic.tipo];
       ic.n.setText(String(n));
-      ic.img.setAlpha(n > 0 ? 1 : 0.3);
-      ic.n.setAlpha(n > 0 ? 1 : 0.4);
-      if (j.seleccion === ic.tipo && n > 0) g.lineStyle(2, 0xf2b544, 1).strokeRoundedRect(ic.img.x - 15, ic.img.y - 13, 46, 26, 6);
+      ic.img.setAlpha((n > 0 ? 1 : 0.3) * alfa);
+      ic.n.setAlpha((n > 0 ? 1 : 0.4) * alfa);
+      if (j.seleccion === ic.tipo && n > 0) g.lineStyle(2, 0xf2b544, alfa).strokeRoundedRect(ic.img.x - 15, ic.img.y - 13, 46, 26, 6);
     }
 
     for (let k = 0; k < j.stats.cargasRodada; k++) {
-      g.fillStyle(k < j.cargasRodada ? 0x7ea0ff : UI.borde, 1).fillCircle(x + PANEL.ancho - 20 - k * 16, y + 68, 5);
+      g.fillStyle(k < j.cargasRodada ? 0x7ea0ff : UI.borde, alfa).fillCircle(x + PANEL.ancho - 20 - k * 16, y + 68, 5);
     }
   }
 }

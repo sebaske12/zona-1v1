@@ -70,7 +70,20 @@ export class Victoria extends Phaser.Scene {
     });
 
     if (this.enLinea) {
-      boton(this, 640, 660, 'Volver al menú', () => this.salirEnLinea(), { ancho: 300, color: UI.gris });
+      const red = this.registry.get('red');
+      this.btnRevancha = boton(this, 500, 660, 'Revancha', () => this.revanchaEnLinea(), { ancho: 280, color: UI.rojo });
+      boton(this, 790, 660, 'Menú', () => this.salirEnLinea(), { ancho: 220, color: UI.gris });
+      if (red) {
+        // El invitado pide la revancha; el anfitrión la arranca para los dos
+        red.manejador = (t, d) => {
+          if (t === 'revancha' && red.esAnfitrion) this.revanchaEnLinea();
+          if (t === 'inicio' && !red.esAnfitrion) {
+            this.registry.set('partida', nuevaPartida(d));
+            this.scene.start('RondaInvitado');
+          }
+        };
+        this.events.once('shutdown', () => { red.manejador = null; });
+      }
     } else {
       boton(this, 500, 660, 'Revancha (Enter)', () => this.revancha(), { ancho: 280, color: UI.rojo });
       boton(this, 790, 660, 'Menú (Esc)', () => this.scene.start('Menu'), { ancho: 220, color: UI.gris });
@@ -84,6 +97,21 @@ export class Victoria extends Phaser.Scene {
     const p = this.registry.get('partida');
     this.registry.set('partida', nuevaPartida(p));
     this.scene.start('Ronda');
+  }
+
+  revanchaEnLinea() {
+    const red = this.registry.get('red');
+    if (!red) return;
+    if (red.esAnfitrion) {
+      const p = this.registry.get('partida');
+      const config = { perfiles: p.perfiles, mapa: p.mapa, modo: p.modo, vida: p.vida, apuestas: p.apuestas };
+      red.enviar('inicio', config);
+      this.registry.set('partida', nuevaPartida(config));
+      this.scene.start('RondaEnLinea');
+    } else {
+      red.enviar('revancha');
+      this.btnRevancha.etiqueta.setText('Esperando…');
+    }
   }
 
   salirEnLinea() {
